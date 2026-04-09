@@ -1,1680 +1,771 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>JorgeChat — jorgepompacarrera.net</title>
-  <!-- Socket.IO client library — loaded from our own server -->
+  <title>JorgeChat - jorgepompacarrera.net</title>
   <script src="/socket.io/socket.io.js"></script>
   <style>
-    /* ============================================================
-       FONTS — using "VT323" for that authentic early-2000s
-       monospace terminal feel, plus "Press Start 2P" for headers.
-       Both are Google Fonts that load fast.
-       ============================================================ */
-    @import url('https://fonts.googleapis.com/css2?family=VT323&family=Press+Start+2P&display=swap');
-
-    /* ============================================================
-       CSS RESET & BASE
-       ============================================================ */
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
-    :root {
-      /* Color palette — inspired by AIM/mIRC/ICQ era */
-      --bg-primary: #1a1a2e;
-      --bg-secondary: #16213e;
-      --bg-panel: #0f3460;
-      --bg-input: #1a1a2e;
-      --border-color: #533483;
-      --border-glow: #7b68ee;
-      --text-primary: #e0e0e0;
-      --text-secondary: #a0a0c0;
-      --text-muted: #6a6a8a;
-      --accent-primary: #7b68ee;
-      --accent-secondary: #00d4ff;
-      --accent-green: #39ff14;
-      --accent-yellow: #ffd700;
-      --accent-red: #ff4444;
-      --system-msg: #888;
-      --scrollbar-track: #1a1a2e;
-      --scrollbar-thumb: #533483;
-    }
-
-    html, body {
-      height: 100%;
-      overflow: hidden;
-      font-family: 'VT323', monospace;
-      font-size: 18px;
-      background: var(--bg-primary);
-      color: var(--text-primary);
-    }
-
-    /* ============================================================
-       SCROLLBAR STYLING — custom retro look
-       ============================================================ */
-    ::-webkit-scrollbar {
-      width: 12px;
-    }
-    ::-webkit-scrollbar-track {
-      background: var(--scrollbar-track);
-      border-left: 1px solid var(--border-color);
-    }
-    ::-webkit-scrollbar-thumb {
-      background: var(--scrollbar-thumb);
-      border: 1px solid var(--border-glow);
-    }
-    ::-webkit-scrollbar-thumb:hover {
-      background: var(--accent-primary);
-    }
-
-    /* ============================================================
-       LOGIN SCREEN — the first thing users see
-       ============================================================ */
-    #login-screen {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
-      background: linear-gradient(135deg, #0a0a1a 0%, #1a1a3e 50%, #0a0a1a 100%);
-      animation: bgPulse 8s ease-in-out infinite;
-    }
-
-    @keyframes bgPulse {
-      0%, 100% { background: linear-gradient(135deg, #0a0a1a 0%, #1a1a3e 50%, #0a0a1a 100%); }
-      50% { background: linear-gradient(135deg, #0a0a1a 0%, #1a2a4e 50%, #0a0a1a 100%); }
-    }
-
-    .login-box {
-      background: var(--bg-secondary);
-      border: 2px solid var(--border-glow);
-      padding: 40px;
-      text-align: center;
-      box-shadow: 0 0 30px rgba(123, 104, 238, 0.3), inset 0 0 60px rgba(0, 0, 0, 0.5);
-      max-width: 420px;
-      width: 90%;
-    }
-
-    .login-title {
-      font-family: 'Press Start 2P', monospace;
-      font-size: 20px;
-      color: var(--accent-primary);
-      margin-bottom: 8px;
-      text-shadow: 0 0 10px rgba(123, 104, 238, 0.5);
-    }
-
-    .login-subtitle {
-      font-size: 16px;
-      color: var(--text-muted);
-      margin-bottom: 30px;
-    }
-
-    .login-input {
-      width: 100%;
-      padding: 12px 16px;
-      font-family: 'VT323', monospace;
-      font-size: 22px;
-      background: var(--bg-primary);
-      color: var(--accent-green);
-      border: 2px solid var(--border-color);
-      outline: none;
-      margin-bottom: 16px;
-      transition: border-color 0.2s;
-    }
-
-    .login-input:focus {
-      border-color: var(--accent-primary);
-      box-shadow: 0 0 10px rgba(123, 104, 238, 0.3);
-    }
-
-    .login-input::placeholder {
-      color: var(--text-muted);
-    }
-
-    .login-btn {
-      width: 100%;
-      padding: 12px;
-      font-family: 'Press Start 2P', monospace;
-      font-size: 12px;
-      background: var(--accent-primary);
-      color: white;
-      border: none;
-      cursor: pointer;
-      text-transform: uppercase;
-      letter-spacing: 2px;
-      transition: all 0.2s;
-    }
-
-    .login-btn:hover {
-      background: var(--accent-secondary);
-      box-shadow: 0 0 20px rgba(0, 212, 255, 0.4);
-    }
-
-    .login-error {
-      color: var(--accent-red);
-      font-size: 16px;
-      margin-top: 12px;
-      min-height: 20px;
-    }
-
-    .login-version {
-      margin-top: 20px;
-      font-size: 14px;
-      color: var(--text-muted);
-    }
-
-    /* ============================================================
-       MAIN CHAT LAYOUT — three-panel design
-       Left: channels/rooms/users
-       Center: message area
-       Right: user details (hidden on mobile)
-       ============================================================ */
-    #chat-screen {
-      display: none; /* shown after login */
-      height: 100vh;
-      flex-direction: column;
-    }
-
-    /* Top navigation bar — links to all 4 jorge sites */
-    .top-bar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      background: var(--bg-secondary);
-      border-bottom: 2px solid var(--border-color);
-      padding: 0 16px;
-      height: 42px;
-      flex-shrink: 0;
-    }
-
-    .top-bar-left {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-    }
-
-    .top-bar-logo {
-      font-family: 'Press Start 2P', monospace;
+    body {
+      margin: 0; padding: 0;
+      font-family: Tahoma, Verdana, Arial, sans-serif;
       font-size: 11px;
-      color: var(--accent-primary);
-      text-shadow: 0 0 8px rgba(123, 104, 238, 0.4);
-    }
-
-    .site-nav {
-      display: flex;
-      gap: 4px;
-    }
-
-    .site-nav a {
-      font-family: 'VT323', monospace;
-      font-size: 16px;
-      color: var(--text-secondary);
-      text-decoration: none;
-      padding: 4px 10px;
-      border: 1px solid transparent;
-      transition: all 0.15s;
-    }
-
-    .site-nav a:hover {
-      color: var(--accent-secondary);
-      border-color: var(--border-color);
-      background: rgba(123, 104, 238, 0.1);
-    }
-
-    .site-nav a.active {
-      color: var(--accent-primary);
-      border-color: var(--border-glow);
-      background: rgba(123, 104, 238, 0.15);
-    }
-
-    .top-bar-right {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      font-size: 16px;
-      color: var(--text-secondary);
-    }
-
-    .connection-status {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .status-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: var(--accent-green);
-      box-shadow: 0 0 6px var(--accent-green);
-      animation: pulse 2s infinite;
-    }
-
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.5; }
-    }
-
-    .status-dot.disconnected {
-      background: var(--accent-red);
-      box-shadow: 0 0 6px var(--accent-red);
-    }
-
-    /* Main content area below the top bar */
-    .chat-body {
-      display: flex;
-      flex: 1;
-      overflow: hidden;
-    }
-
-    /* ============================================================
-       LEFT SIDEBAR — channels, rooms, online users
-       ============================================================ */
-    .sidebar {
-      width: 240px;
-      background: var(--bg-secondary);
-      border-right: 2px solid var(--border-color);
-      display: flex;
-      flex-direction: column;
-      flex-shrink: 0;
-      overflow: hidden;
-    }
-
-    .sidebar-section {
-      border-bottom: 1px solid var(--border-color);
-    }
-
-    .sidebar-header {
-      font-family: 'Press Start 2P', monospace;
-      font-size: 9px;
-      color: var(--text-muted);
-      padding: 12px 14px 8px;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-    }
-
-    .sidebar-item {
-      padding: 8px 14px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 18px;
-      color: var(--text-secondary);
-      transition: all 0.1s;
-      border-left: 3px solid transparent;
-    }
-
-    .sidebar-item:hover {
-      background: rgba(123, 104, 238, 0.1);
-      color: var(--text-primary);
-    }
-
-    .sidebar-item.active {
-      background: rgba(123, 104, 238, 0.15);
-      border-left-color: var(--accent-primary);
-      color: var(--accent-primary);
-    }
-
-    .sidebar-item .badge {
-      margin-left: auto;
-      background: var(--accent-red);
-      color: white;
-      font-size: 12px;
-      padding: 1px 6px;
-      border-radius: 8px;
-      font-family: 'VT323', monospace;
-    }
-
-    .sidebar-item .channel-hash {
-      color: var(--text-muted);
-      font-weight: bold;
-    }
-
-    .sidebar-item .user-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: var(--accent-green);
-      flex-shrink: 0;
-    }
-
-    .user-list {
-      flex: 1;
-      overflow-y: auto;
-    }
-
-    /* Create room button */
-    .create-room-btn {
-      padding: 8px 14px;
-      cursor: pointer;
-      font-size: 16px;
-      color: var(--text-muted);
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      transition: color 0.15s;
-    }
-
-    .create-room-btn:hover {
-      color: var(--accent-primary);
-    }
-
-    /* ============================================================
-       CENTER — main message area
-       ============================================================ */
-    .chat-main {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      min-width: 0; /* prevents flex overflow */
-    }
-
-    /* Channel header */
-    .chat-header {
-      padding: 10px 16px;
-      background: var(--bg-secondary);
-      border-bottom: 1px solid var(--border-color);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      flex-shrink: 0;
-    }
-
-    .chat-header-title {
-      font-family: 'Press Start 2P', monospace;
-      font-size: 11px;
-      color: var(--text-primary);
-    }
-
-    .chat-header-info {
-      font-size: 15px;
-      color: var(--text-muted);
-    }
-
-    /* Messages container */
-    .messages {
-      flex: 1;
-      overflow-y: auto;
-      padding: 12px 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-
-    /* Individual message */
-    .message {
-      padding: 4px 0;
-      line-height: 1.4;
-      word-wrap: break-word;
-      animation: msgIn 0.15s ease-out;
-    }
-
-    @keyframes msgIn {
-      from { opacity: 0; transform: translateY(4px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    .message .timestamp {
-      color: var(--text-muted);
-      font-size: 15px;
-      margin-right: 6px;
-    }
-
-    .message .username {
-      font-weight: bold;
-      margin-right: 6px;
-      cursor: pointer;
-    }
-
-    .message .username:hover {
-      text-decoration: underline;
-    }
-
-    .message .msg-text {
-      color: var(--text-primary);
-    }
-
-    .message.system-message {
-      color: var(--system-msg);
-      font-style: italic;
-      font-size: 16px;
-      padding: 2px 0;
-    }
-
-    .message.system-message .timestamp {
-      font-style: normal;
-    }
-
-    /* File previews inside messages */
-    .file-preview {
-      margin-top: 6px;
-      max-width: 400px;
-    }
-
-    .file-preview img {
-      max-width: 100%;
-      max-height: 300px;
-      border: 1px solid var(--border-color);
-      cursor: pointer;
-      transition: border-color 0.15s;
-    }
-
-    .file-preview img:hover {
-      border-color: var(--accent-primary);
-    }
-
-    .file-preview video,
-    .file-preview audio {
-      max-width: 100%;
-      outline: none;
-    }
-
-    .file-preview video {
-      max-height: 300px;
-      border: 1px solid var(--border-color);
-    }
-
-    .file-preview audio {
-      height: 36px;
-    }
-
-    .file-download {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 6px 12px;
-      background: var(--bg-panel);
-      border: 1px solid var(--border-color);
-      color: var(--accent-secondary);
-      text-decoration: none;
-      font-family: 'VT323', monospace;
-      font-size: 17px;
-      transition: all 0.15s;
-    }
-
-    .file-download:hover {
-      border-color: var(--accent-primary);
-      background: rgba(123, 104, 238, 0.1);
-    }
-
-    .file-size {
-      color: var(--text-muted);
-      font-size: 14px;
-    }
-
-    /* Typing indicator */
-    .typing-indicator {
-      padding: 4px 16px;
-      font-size: 15px;
-      color: var(--text-muted);
-      min-height: 24px;
-      flex-shrink: 0;
-    }
-
-    /* ============================================================
-       INPUT AREA — message box + file upload
-       ============================================================ */
-    .input-area {
-      padding: 10px 16px;
-      background: var(--bg-secondary);
-      border-top: 2px solid var(--border-color);
-      display: flex;
-      gap: 8px;
-      align-items: flex-end;
-      flex-shrink: 0;
-    }
-
-    .input-wrapper {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-
-    /* File attachment preview before sending */
-    .pending-file {
-      display: none;
-      align-items: center;
-      gap: 8px;
-      padding: 6px 10px;
-      background: var(--bg-primary);
-      border: 1px solid var(--border-color);
-      font-size: 15px;
-      color: var(--text-secondary);
-    }
-
-    .pending-file.active {
-      display: flex;
-    }
-
-    .pending-file-name {
-      flex: 1;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .pending-file-remove {
-      cursor: pointer;
-      color: var(--accent-red);
-      font-size: 18px;
-    }
-
-    .pending-file-remove:hover {
-      color: #ff6666;
-    }
-
-    .msg-input {
-      width: 100%;
-      padding: 10px 14px;
-      font-family: 'VT323', monospace;
-      font-size: 20px;
-      background: var(--bg-input);
-      color: var(--text-primary);
-      border: 2px solid var(--border-color);
-      outline: none;
-      resize: none;
-      transition: border-color 0.15s;
-    }
-
-    .msg-input:focus {
-      border-color: var(--accent-primary);
-    }
-
-    .msg-input::placeholder {
-      color: var(--text-muted);
-    }
-
-    .input-actions {
-      display: flex;
-      gap: 6px;
-    }
-
-    .btn-icon {
-      width: 42px;
-      height: 42px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: var(--bg-panel);
-      border: 1px solid var(--border-color);
-      color: var(--text-secondary);
-      cursor: pointer;
-      font-size: 20px;
-      transition: all 0.15s;
-    }
-
-    .btn-icon:hover {
-      border-color: var(--accent-primary);
-      color: var(--accent-primary);
-      background: rgba(123, 104, 238, 0.1);
-    }
-
-    .send-btn {
-      background: var(--accent-primary);
-      border-color: var(--accent-primary);
-      color: white;
-    }
-
-    .send-btn:hover {
-      background: var(--accent-secondary);
-      border-color: var(--accent-secondary);
-    }
-
-    #file-input {
-      display: none;
-    }
-
-    /* Upload progress bar */
-    .upload-progress {
-      display: none;
-      height: 3px;
-      background: var(--bg-primary);
-      margin-top: 4px;
-    }
-
-    .upload-progress.active {
-      display: block;
-    }
-
-    .upload-progress-bar {
-      height: 100%;
-      background: var(--accent-primary);
-      width: 0%;
-      transition: width 0.2s;
-    }
-
-    /* ============================================================
-       MODAL — for creating rooms
-       ============================================================ */
-    .modal-overlay {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.7);
-      z-index: 1000;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .modal-overlay.active {
-      display: flex;
-    }
-
-    .modal {
-      background: var(--bg-secondary);
-      border: 2px solid var(--border-glow);
-      padding: 30px;
-      width: 360px;
-      max-width: 90vw;
-      box-shadow: 0 0 40px rgba(123, 104, 238, 0.3);
-    }
-
-    .modal-title {
-      font-family: 'Press Start 2P', monospace;
-      font-size: 12px;
-      color: var(--accent-primary);
-      margin-bottom: 20px;
-    }
-
-    .modal input {
-      width: 100%;
-      padding: 10px 14px;
-      font-family: 'VT323', monospace;
-      font-size: 20px;
-      background: var(--bg-primary);
-      color: var(--accent-green);
-      border: 2px solid var(--border-color);
-      outline: none;
-      margin-bottom: 16px;
-    }
-
-    .modal input:focus {
-      border-color: var(--accent-primary);
-    }
-
-    .modal-actions {
-      display: flex;
-      gap: 10px;
-      justify-content: flex-end;
-    }
-
-    .modal-btn {
-      padding: 8px 20px;
-      font-family: 'VT323', monospace;
-      font-size: 18px;
-      cursor: pointer;
-      border: 1px solid var(--border-color);
-      background: var(--bg-panel);
-      color: var(--text-secondary);
-      transition: all 0.15s;
-    }
-
-    .modal-btn:hover {
-      border-color: var(--accent-primary);
-      color: var(--text-primary);
-    }
-
-    .modal-btn.primary {
-      background: var(--accent-primary);
-      border-color: var(--accent-primary);
-      color: white;
-    }
-
-    .modal-btn.primary:hover {
-      background: var(--accent-secondary);
-    }
-
-    /* ============================================================
-       IMAGE LIGHTBOX — click to enlarge images
-       ============================================================ */
-    .lightbox {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.9);
-      z-index: 2000;
-      cursor: pointer;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .lightbox.active {
-      display: flex;
-    }
-
-    .lightbox img {
-      max-width: 90vw;
-      max-height: 90vh;
-      border: 2px solid var(--border-glow);
-    }
-
-    /* ============================================================
-       RESPONSIVE — stack layout on small screens
-       ============================================================ */
-    @media (max-width: 768px) {
-      .sidebar {
-        width: 200px;
-        font-size: 16px;
-      }
-
-      .top-bar {
-        padding: 0 8px;
-      }
-
-      .site-nav a {
-        padding: 4px 6px;
-        font-size: 14px;
-      }
-
-      .top-bar-logo {
-        font-size: 9px;
-      }
-    }
-
-    @media (max-width: 560px) {
-      .sidebar {
-        position: fixed;
-        left: -240px;
-        top: 42px;
-        bottom: 0;
-        z-index: 500;
-        width: 240px;
-        transition: left 0.2s;
-      }
-
-      .sidebar.open {
-        left: 0;
-      }
-
-      .sidebar-toggle {
-        display: flex !important;
-      }
-    }
-
-    .sidebar-toggle {
-      display: none;
-      align-items: center;
-      justify-content: center;
-      width: 32px;
-      height: 32px;
-      cursor: pointer;
-      color: var(--text-secondary);
-      font-size: 22px;
-    }
-
-    .sidebar-toggle:hover {
-      color: var(--accent-primary);
-    }
-
-    /* ============================================================
-       SCANLINE OVERLAY — subtle CRT effect for that retro feel.
-       Pure CSS, no images needed.
-       ============================================================ */
-    .scanlines {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      pointer-events: none;
-      z-index: 9999;
-      background: repeating-linear-gradient(
-        0deg,
-        rgba(0, 0, 0, 0.03) 0px,
-        rgba(0, 0, 0, 0.03) 1px,
-        transparent 1px,
-        transparent 3px
-      );
-    }
+      background-color: #3a6ea5;
+      color: #000000;
+    }
+    a { color: #0000ff; }
+    a:visited { color: #551a8b; }
+    a:hover { color: #ff0000; }
+    .panel-raised { border: 2px outset #d4d0c8; background-color: #ece9d8; }
+    .panel-sunken { border: 2px inset #d4d0c8; background-color: #ffffff; }
+    .titlebar { background-color: #0a246a; color: #ffffff; font-weight: bold; font-size: 11px; padding: 3px 6px; }
+    .titlebar-inactive { background-color: #7f9db9; color: #d4d0c8; font-weight: bold; font-size: 11px; padding: 3px 6px; }
+    .btn {
+      font-family: Tahoma, Verdana, Arial, sans-serif; font-size: 11px;
+      border: 2px outset #d4d0c8; background-color: #ece9d8;
+      padding: 2px 12px; cursor: pointer; color: #000000;
+    }
+    .btn:active { border-style: inset; }
+    .btn:disabled { color: #808080; }
+    .text-input {
+      font-family: Tahoma, Verdana, Arial, sans-serif; font-size: 11px;
+      border: 2px inset #d4d0c8; padding: 2px 4px;
+      background-color: #ffffff; color: #000000;
+    }
+    .scroll-area { overflow-y: auto; overflow-x: hidden; }
+    .statusbar { border-top: 2px groove #d4d0c8; background-color: #ece9d8; padding: 2px 6px; font-size: 10px; color: #444444; }
+    .navbar { background-color: #ece9d8; border-bottom: 2px groove #d4d0c8; padding: 2px 4px; }
+    .navbar a { font-size: 11px; color: #0a246a; text-decoration: none; padding: 2px 8px; border: 1px solid #ece9d8; }
+    .navbar a:hover { border: 1px outset #d4d0c8; background-color: #d4d0c8; color: #000000; }
+    .navbar a.current { border: 1px inset #d4d0c8; background-color: #ffffff; font-weight: bold; }
+    .msg-time { color: #808080; font-size: 10px; }
+    .msg-system { color: #808080; font-style: italic; font-size: 10px; padding: 1px 0; }
+    .msg-text { font-size: 11px; word-wrap: break-word; }
+    .msg-user { font-weight: bold; cursor: pointer; }
+    .msg-user:hover { text-decoration: underline; }
+    .sidebar-item { padding: 2px 6px; cursor: pointer; font-size: 11px; white-space: nowrap; }
+    .sidebar-item:hover { background-color: #316ac5; color: #ffffff; }
+    .sidebar-item-active { background-color: #316ac5; color: #ffffff; }
+    .badge { background-color: #ff0000; color: #ffffff; font-size: 9px; font-weight: bold; padding: 0 3px; }
+    .file-preview img { border: 1px solid #808080; max-width: 300px; max-height: 200px; cursor: pointer; }
+    .modal-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: #000000; filter: alpha(opacity=50); opacity: 0.5; z-index: 100; display: none; }
+    .modal-window { position: fixed; top: 50%; left: 50%; margin-top: -80px; margin-left: -150px; width: 300px; z-index: 101; display: none; }
+    .lightbox-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: #000000; filter: alpha(opacity=80); opacity: 0.8; z-index: 200; display: none; }
+    .lightbox-content { position: fixed; top: 50%; left: 50%; margin-left: -350px; margin-top: -250px; z-index: 201; display: none; text-align: center; }
+    .lightbox-content img { border: 3px outset #d4d0c8; max-width: 700px; max-height: 500px; }
+    .pending-bar { background-color: #ffffcc; border: 1px solid #cccc99; padding: 2px 6px; font-size: 10px; display: none; }
+    .tab-btn { font-family: Tahoma, Verdana, Arial, sans-serif; font-size: 11px; border: 2px outset #d4d0c8; border-bottom: none; background-color: #d4d0c8; padding: 3px 14px; cursor: pointer; color: #000000; position: relative; top: 2px; }
+    .tab-btn.active-tab { background-color: #ece9d8; border-bottom: 2px solid #ece9d8; font-weight: bold; }
+    .field-row { padding: 3px 0; }
+    .field-label { display: inline-block; width: 100px; text-align: right; padding-right: 6px; }
   </style>
 </head>
 <body>
-  <!-- CRT scanline overlay -->
-  <div class="scanlines"></div>
 
-  <!-- ============================================================
-       LOGIN SCREEN
-       ============================================================ -->
-  <div id="login-screen">
-    <div class="login-box">
-      <div class="login-title">JorgeChat</div>
-      <div class="login-subtitle">jorgepompacarrera.net</div>
-      <input
-        type="text"
-        class="login-input"
-        id="username-input"
-        placeholder="Enter username..."
-        maxlength="24"
-        autocomplete="off"
-        spellcheck="false"
-      >
-      <button class="login-btn" id="login-btn">Connect</button>
-      <div class="login-error" id="login-error"></div>
-      <div class="login-version">v1.0 — Socket.IO Retro Chat</div>
-    </div>
-  </div>
+<!-- ============================================================
+     AUTH SCREEN — login + register with tabs
+     ============================================================ -->
+<div id="auth-screen">
+  <table width="100%" height="100%" cellpadding="0" cellspacing="0" border="0">
+    <tr><td align="center" valign="middle">
+      <table cellpadding="0" cellspacing="0" border="0" width="380">
+        <!-- Title -->
+        <tr><td align="center" style="padding-bottom: 12px;">
+          <b style="font-size: 16px; color: #ffffff;">JorgeChat</b><br>
+          <span style="font-size: 10px; color: #c0c0c0;">jorgepompacarrera.net</span>
+        </td></tr>
+        <!-- Tabs -->
+        <tr><td style="padding-left: 4px;">
+          <span class="tab-btn active-tab" id="tab-login" onclick="switchTab('login')">Sign In</span>
+          <span class="tab-btn" id="tab-register" onclick="switchTab('register')">Register</span>
+        </td></tr>
+        <!-- Login form -->
+        <tr><td>
+          <table cellpadding="0" cellspacing="0" border="0" width="100%" class="panel-raised" id="form-login">
+            <tr><td class="titlebar">Sign In to JorgeChat</td></tr>
+            <tr><td style="padding: 16px; background-color: #ece9d8;">
+              <div class="field-row">
+                <span class="field-label">Username:</span>
+                <input type="text" class="text-input" id="login-user" style="width: 200px;" maxlength="24" autocomplete="off">
+              </div>
+              <div class="field-row">
+                <span class="field-label">Password:</span>
+                <input type="password" class="text-input" id="login-pass" style="width: 200px;" maxlength="64">
+              </div>
+              <div style="padding: 8px 0 0 106px;">
+                <input type="button" class="btn" id="login-btn" value="Sign In >>">
+              </div>
+              <div id="login-error" style="color: #ff0000; font-size: 10px; min-height: 14px; padding: 4px 0 0 106px;"></div>
+            </td></tr>
+          </table>
+          <!-- Register form (hidden by default) -->
+          <table cellpadding="0" cellspacing="0" border="0" width="100%" class="panel-raised" id="form-register" style="display: none;">
+            <tr><td class="titlebar">Create Account</td></tr>
+            <tr><td style="padding: 16px; background-color: #ece9d8;">
+              <div class="field-row">
+                <span class="field-label">Username:</span>
+                <input type="text" class="text-input" id="reg-user" style="width: 200px;" maxlength="24" autocomplete="off">
+              </div>
+              <div class="field-row">
+                <span class="field-label">Display Name:</span>
+                <input type="text" class="text-input" id="reg-display" style="width: 200px;" maxlength="24" autocomplete="off">
+              </div>
+              <div class="field-row">
+                <span class="field-label">Password:</span>
+                <input type="password" class="text-input" id="reg-pass" style="width: 200px;" maxlength="64">
+              </div>
+              <div style="padding: 8px 0 0 106px;">
+                <input type="button" class="btn" id="reg-btn" value="Create Account >>">
+              </div>
+              <div id="reg-error" style="color: #ff0000; font-size: 10px; min-height: 14px; padding: 4px 0 0 106px;"></div>
+              <div style="font-size: 10px; color: #808080; padding: 6px 0 0 106px;">
+                Username: letters, numbers, underscores<br>
+                Display Name: whatever you want
+              </div>
+            </td></tr>
+          </table>
+        </td></tr>
+        <tr><td align="center" style="padding-top: 8px;">
+          <span style="font-size: 9px; color: #c0c0c0;">v2.0 &mdash; Socket.IO Retro Chat</span>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</div>
 
-  <!-- ============================================================
-       MAIN CHAT SCREEN
-       ============================================================ -->
-  <div id="chat-screen">
-    <!-- Top navigation bar -->
-    <div class="top-bar">
-      <div class="top-bar-left">
-        <div class="sidebar-toggle" id="sidebar-toggle">☰</div>
-        <div class="top-bar-logo">JorgeChat</div>
-        <nav class="site-nav">
-          <a href="https://jorgepompacarrera.com">.com</a>
-          <a href="https://jorgepompacarrera.net" class="active">.net</a>
-          <a href="https://jorgepompacarrera.org">.org</a>
-          <a href="https://jorgepompacarrera.info">.info</a>
-        </nav>
-      </div>
-      <div class="top-bar-right">
-        <div class="connection-status">
-          <div class="status-dot" id="status-dot"></div>
+<!-- ============================================================
+     MAIN CHAT SCREEN
+     ============================================================ -->
+<div id="chat-screen" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;">
+  <table width="100%" height="100%" cellpadding="0" cellspacing="0" border="0">
+    <tr>
+      <td colspan="2" class="navbar">
+        <b style="color: #0a246a; margin-right: 12px;">JorgeChat</b>
+        <a href="https://jorgepompacarrera.com">.com</a>
+        <a href="https://jorgepompacarrera.net" class="current">.net</a>
+        <a href="https://jorgepompacarrera.org">.org</a>
+        <a href="https://jorgepompacarrera.info">.info</a>
+        <span style="float: right; font-size: 10px; color: #444;">
+          <span id="status-icon" style="color: #00cc00;">&#9679;</span>
           <span id="connection-label">Connected</span>
-        </div>
-        <span id="my-username"></span>
-      </div>
-    </div>
-
-    <div class="chat-body">
-      <!-- Left sidebar -->
-      <div class="sidebar" id="sidebar">
-        <!-- Channels -->
-        <div class="sidebar-section">
-          <div class="sidebar-header">Channels</div>
-          <div class="sidebar-item active" data-channel="public" onclick="switchChannel('public')">
-            <span class="channel-hash">#</span> public
-          </div>
-        </div>
-
-        <!-- Rooms -->
-        <div class="sidebar-section">
-          <div class="sidebar-header">Rooms</div>
-          <div id="rooms-list"></div>
-          <div class="create-room-btn" onclick="showCreateRoom()">+ Create Room</div>
-        </div>
-
-        <!-- Online Users (clickable for DMs) -->
-        <div class="sidebar-section" style="flex:1; display:flex; flex-direction:column; overflow:hidden;">
-          <div class="sidebar-header">Online — <span id="online-count">0</span></div>
-          <div class="user-list" id="user-list"></div>
-        </div>
-      </div>
-
-      <!-- Main chat area -->
-      <div class="chat-main">
-        <div class="chat-header">
-          <div>
-            <span class="chat-header-title" id="channel-title"># public</span>
-          </div>
-          <div class="chat-header-info" id="channel-info">Main chat room</div>
-        </div>
-
-        <div class="messages" id="messages"></div>
-
-        <div class="typing-indicator" id="typing-indicator"></div>
-
-        <div class="input-area">
-          <div class="input-wrapper">
-            <div class="pending-file" id="pending-file">
-              <span>📎</span>
-              <span class="pending-file-name" id="pending-file-name"></span>
-              <span class="pending-file-remove" onclick="clearPendingFile()">✕</span>
+          &nbsp;|&nbsp;
+          <b id="my-display"></b>
+          &nbsp;
+          <input type="button" class="btn" value="Logout" onclick="doLogout()" style="font-size: 9px; padding: 0 6px;">
+        </span>
+      </td>
+    </tr>
+    <tr>
+      <td width="170" valign="top" class="panel-raised" style="padding: 0;">
+        <table width="100%" cellpadding="0" cellspacing="0" border="0">
+          <tr><td class="titlebar-inactive">Channels</td></tr>
+          <tr><td class="panel-sunken" style="padding: 2px;">
+            <div class="sidebar-item sidebar-item-active" id="ch-public" onclick="switchChannel('public')"># public</div>
+          </td></tr>
+          <tr><td class="titlebar-inactive">Rooms</td></tr>
+          <tr><td class="panel-sunken" style="padding: 2px;">
+            <div id="rooms-list"></div>
+            <div class="sidebar-item" onclick="showCreateRoom()" style="color: #0a246a;">[+] Create Room</div>
+          </td></tr>
+          <tr><td class="titlebar-inactive">Online (<span id="online-count">0</span>)</td></tr>
+          <tr><td class="panel-sunken" style="padding: 2px;">
+            <div id="user-list" class="scroll-area" style="max-height: 400px;"></div>
+          </td></tr>
+        </table>
+      </td>
+      <td valign="top" style="padding: 0; height: 100%;">
+        <table width="100%" height="100%" cellpadding="0" cellspacing="0" border="0">
+          <tr><td class="panel-raised" style="padding: 3px 8px;">
+            <b id="channel-title"># public</b>
+            <span style="color: #808080; margin-left: 12px;" id="channel-info">Main chat room</span>
+          </td></tr>
+          <tr><td style="height: 100%; padding: 0;">
+            <div style="position: relative; width: 100%; height: 100%;">
+              <div id="messages" class="panel-sunken scroll-area" style="position: absolute; top: 0; bottom: 0; left: 0; right: 0; padding: 4px;"></div>
             </div>
-            <input
-              type="text"
-              class="msg-input"
-              id="msg-input"
-              placeholder="Type a message..."
-              autocomplete="off"
-              spellcheck="false"
-            >
-            <div class="upload-progress" id="upload-progress">
-              <div class="upload-progress-bar" id="upload-progress-bar"></div>
+          </td></tr>
+          <tr><td style="height: 16px; padding: 0 8px; background-color: #ece9d8;">
+            <span id="typing-indicator" style="font-size: 10px; color: #808080;"></span>
+          </td></tr>
+          <tr><td style="height: 1px; padding: 0;">
+            <div class="pending-bar" id="pending-file">
+              &#128206; <span id="pending-file-name"></span>
+              &nbsp;<span style="color: #ff0000; cursor: pointer; font-weight: bold;" onclick="clearPendingFile()">[x]</span>
             </div>
-          </div>
-          <div class="input-actions">
-            <label class="btn-icon" for="file-input" title="Upload file">📎</label>
-            <input type="file" id="file-input">
-            <button class="btn-icon send-btn" id="send-btn" title="Send">▶</button>
-          </div>
-        </div>
+          </td></tr>
+          <tr><td class="panel-raised" style="padding: 4px;">
+            <table width="100%" cellpadding="0" cellspacing="2" border="0">
+              <tr>
+                <td><input type="text" class="text-input" id="msg-input" style="width: 100%;" placeholder="Type a message..." autocomplete="off"></td>
+                <td width="28"><label for="file-input" style="cursor: pointer; font-size: 14px;" title="Attach file">&#128206;</label><input type="file" id="file-input" style="display: none;"></td>
+                <td width="50"><input type="button" class="btn" id="send-btn" value="Send"></td>
+              </tr>
+            </table>
+          </td></tr>
+        </table>
+      </td>
+    </tr>
+    <tr>
+      <td colspan="2" class="statusbar">
+        <span id="status-bar-text">Ready</span>
+        <span style="float: right;">JorgeChat v2.0</span>
+      </td>
+    </tr>
+  </table>
+</div>
+
+<!-- Create room modal -->
+<div class="modal-bg" id="modal-bg" onclick="hideCreateRoom()"></div>
+<div class="modal-window" id="create-room-modal">
+  <table cellpadding="0" cellspacing="0" border="0" width="100%" class="panel-raised">
+    <tr><td class="titlebar">Create Room</td></tr>
+    <tr><td style="padding: 16px; background-color: #ece9d8;">
+      <b>Room Name:</b><br>
+      <input type="text" class="text-input" id="room-name-input" maxlength="32" style="width: 100%;" autocomplete="off"><br><br>
+      <div align="right">
+        <input type="button" class="btn" value="Cancel" onclick="hideCreateRoom()">
+        &nbsp;
+        <input type="button" class="btn" value="Create" onclick="createRoom()">
       </div>
-    </div>
-  </div>
+    </td></tr>
+  </table>
+</div>
 
-  <!-- Create room modal -->
-  <div class="modal-overlay" id="create-room-modal">
-    <div class="modal">
-      <div class="modal-title">Create Room</div>
-      <input
-        type="text"
-        id="room-name-input"
-        placeholder="Room name..."
-        maxlength="32"
-        autocomplete="off"
-      >
-      <div class="modal-actions">
-        <button class="modal-btn" onclick="hideCreateRoom()">Cancel</button>
-        <button class="modal-btn primary" onclick="createRoom()">Create</button>
-      </div>
-    </div>
-  </div>
+<!-- Lightbox -->
+<div class="lightbox-bg" id="lightbox-bg" onclick="closeLightbox()"></div>
+<div class="lightbox-content" id="lightbox-content" onclick="closeLightbox()">
+  <img id="lightbox-img" src=""><br>
+  <span style="color: #ffffff; font-size: 10px;">[click to close]</span>
+</div>
 
-  <!-- Image lightbox -->
-  <div class="lightbox" id="lightbox" onclick="closeLightbox()">
-    <img id="lightbox-img" src="">
-  </div>
+<script>
+  // ============================================================
+  // STATE
+  // ============================================================
+  var socket = null;
+  var myUsername = '';
+  var myDisplayName = '';
+  var myColor = '';
+  var myToken = '';
+  var currentChannel = 'public';
+  var currentChannelType = 'public';
+  var pendingFileData = null;
+  var unreadCounts = {};
+  var typingClearTimeout = null;
 
-  <!-- ============================================================
-       CLIENT-SIDE JAVASCRIPT
-       ============================================================ -->
-  <script>
-    // ============================================================
-    // STATE — tracks everything about the current session
-    // ============================================================
-    let socket = null;          // our Socket.IO connection
-    let myUsername = '';         // current user's name
-    let myColor = '';           // current user's assigned color
-    let currentChannel = 'public';  // which channel/room/DM is active
-    let currentChannelType = 'public'; // 'public', 'room', or 'dm'
-    let pendingFile = null;     // file waiting to be sent with next message
-    let typingTimeout = null;   // timer for "user is typing" debounce
-    let unreadCounts = {};      // badge counts for unread messages per channel
+  // DOM refs
+  var authScreen = document.getElementById('auth-screen');
+  var chatScreen = document.getElementById('chat-screen');
+  var messagesDiv = document.getElementById('messages');
+  var msgInput = document.getElementById('msg-input');
+  var sendBtn = document.getElementById('send-btn');
+  var typingIndicator = document.getElementById('typing-indicator');
+  var statusIcon = document.getElementById('status-icon');
+  var connectionLabel = document.getElementById('connection-label');
+  var myDisplaySpan = document.getElementById('my-display');
+  var channelTitle = document.getElementById('channel-title');
+  var channelInfo = document.getElementById('channel-info');
+  var userListDiv = document.getElementById('user-list');
+  var roomsListDiv = document.getElementById('rooms-list');
+  var onlineCount = document.getElementById('online-count');
+  var fileInputEl = document.getElementById('file-input');
+  var pendingFileDiv = document.getElementById('pending-file');
+  var pendingFileNameEl = document.getElementById('pending-file-name');
+  var statusBarText = document.getElementById('status-bar-text');
 
-    // Cache DOM elements we'll use frequently
-    const loginScreen = document.getElementById('login-screen');
-    const chatScreen = document.getElementById('chat-screen');
-    const usernameInput = document.getElementById('username-input');
-    const loginBtn = document.getElementById('login-btn');
-    const loginError = document.getElementById('login-error');
-    const msgInput = document.getElementById('msg-input');
-    const sendBtn = document.getElementById('send-btn');
-    const messagesDiv = document.getElementById('messages');
-    const typingIndicator = document.getElementById('typing-indicator');
-    const statusDot = document.getElementById('status-dot');
-    const connectionLabel = document.getElementById('connection-label');
-    const myUsernameSpan = document.getElementById('my-username');
-    const channelTitle = document.getElementById('channel-title');
-    const channelInfo = document.getElementById('channel-info');
-    const userListDiv = document.getElementById('user-list');
-    const roomsListDiv = document.getElementById('rooms-list');
-    const onlineCount = document.getElementById('online-count');
-    const fileInput = document.getElementById('file-input');
-    const pendingFileDiv = document.getElementById('pending-file');
-    const pendingFileName = document.getElementById('pending-file-name');
-    const uploadProgress = document.getElementById('upload-progress');
-    const uploadProgressBar = document.getElementById('upload-progress-bar');
-
-    // ============================================================
-    // LOGIN FLOW
-    // ============================================================
-
-    loginBtn.addEventListener('click', doLogin);
-    usernameInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') doLogin();
-    });
-
-    function doLogin() {
-      const username = usernameInput.value.trim();
-      if (!username) {
-        loginError.textContent = 'Enter a username';
-        return;
-      }
-
-      loginError.textContent = 'Connecting...';
-      loginBtn.disabled = true;
-
-      // Connect to Socket.IO — it auto-detects the server URL
-      // from the page's origin (same domain = same server).
-      // transports: try WebSocket first, fall back to polling.
-      socket = io({
-        transports: ['websocket', 'polling'],
-        upgrade: true,       // try upgrading polling->websocket
-        rememberUpgrade: true, // remember if upgrade worked
-      });
-
-      // Tell the server we want to join with this username
-      socket.on('connect', () => {
-        socket.emit('join', username);
-      });
-
-      // Server accepted us — switch to chat view
-      socket.on('joined', (data) => {
-        myUsername = data.username;
-        myColor = data.color;
-        myUsernameSpan.textContent = myUsername;
-
-        // Switch screens
-        loginScreen.style.display = 'none';
-        chatScreen.style.display = 'flex';
-
-        // Render existing messages (history from server)
-        data.messages.forEach(msg => renderMessage(msg, 'public'));
-
-        // Render online users
-        updateUserList(data.onlineUsers);
-
-        // Render rooms
-        updateRoomsList(data.rooms);
-
-        // Scroll to bottom
-        scrollToBottom();
-
-        // Focus the message input
-        msgInput.focus();
-      });
-
-      // Username was taken
-      socket.on('join-error', (err) => {
-        loginError.textContent = err;
-        loginBtn.disabled = false;
-        socket.disconnect();
-      });
-
-      // --------------------------------------------------------
-      // Set up all the event listeners for chat functionality
-      // --------------------------------------------------------
-      setupSocketListeners();
-    }
-
-    // ============================================================
-    // SOCKET EVENT LISTENERS
-    // ============================================================
-    function setupSocketListeners() {
-      // --- Public messages ---
-      socket.on('public-message', (msg) => {
-        renderMessage(msg, 'public');
-        if (currentChannel !== 'public' || currentChannelType !== 'public') {
-          incrementUnread('public');
-        }
-        if (currentChannel === 'public' && currentChannelType === 'public') {
-          scrollToBottom();
-        }
-      });
-
-      // --- Direct messages ---
-      socket.on('dm', (msg) => {
-        const otherUser = msg.from === myUsername ? msg.to : msg.from;
-        const dmKey = `dm:${otherUser}`;
-
-        // If this DM conversation is currently open, render it
-        if (currentChannel === dmKey && currentChannelType === 'dm') {
-          renderMessage(msg, dmKey);
-          scrollToBottom();
+  // ============================================================
+  // AUTO-LOGIN — check for saved token in localStorage
+  // ============================================================
+  window.onload = function() {
+    var savedToken = localStorage.getItem('jorgechat_token');
+    if (savedToken) {
+      // Try to authenticate with the saved token
+      fetch('/api/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: savedToken })
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (data.error) {
+          // Token expired or invalid — show login screen
+          localStorage.removeItem('jorgechat_token');
+          document.getElementById('login-user').focus();
         } else {
-          // Store for when they open this conversation
-          incrementUnread(dmKey);
+          // Token valid — go straight to chat
+          myUsername = data.username;
+          myDisplayName = data.displayName;
+          myColor = data.color;
+          myToken = data.token;
+          enterChat();
         }
+      })
+      .catch(function() {
+        localStorage.removeItem('jorgechat_token');
+        document.getElementById('login-user').focus();
       });
-
-      // DM history response
-      socket.on('dm-history', (data) => {
-        messagesDiv.innerHTML = '';
-        const dmKey = `dm:${data.with}`;
-        data.messages.forEach(msg => renderMessage(msg, dmKey));
-        scrollToBottom();
-      });
-
-      socket.on('dm-error', (err) => {
-        console.warn('DM error:', err);
-      });
-
-      // --- Room messages ---
-      socket.on('room-message', (data) => {
-        const roomKey = `room:${data.roomId}`;
-        if (currentChannel === roomKey && currentChannelType === 'room') {
-          renderMessage(data.message, roomKey);
-          scrollToBottom();
-        } else {
-          incrementUnread(roomKey);
-        }
-      });
-
-      // Room joined — received history
-      socket.on('room-joined', (data) => {
-        messagesDiv.innerHTML = '';
-        const roomKey = `room:${data.id}`;
-        data.messages.forEach(msg => renderMessage(msg, roomKey));
-        scrollToBottom();
-      });
-
-      socket.on('room-created', (data) => {
-        switchToRoom(data.id, data.name);
-      });
-
-      socket.on('room-error', (err) => {
-        console.warn('Room error:', err);
-      });
-
-      // --- User/room list updates ---
-      socket.on('user-joined', (data) => {
-        // handled by online-users event
-      });
-
-      socket.on('online-users', (users) => {
-        updateUserList(users);
-      });
-
-      socket.on('rooms-list', (roomsList) => {
-        updateRoomsList(roomsList);
-      });
-
-      // --- Typing indicators ---
-      socket.on('typing', (data) => {
-        showTypingIndicator(data.username);
-      });
-
-      // --- Connection state ---
-      socket.on('disconnect', () => {
-        statusDot.classList.add('disconnected');
-        connectionLabel.textContent = 'Disconnected';
-      });
-
-      socket.on('reconnect', () => {
-        statusDot.classList.remove('disconnected');
-        connectionLabel.textContent = 'Connected';
-        // Re-join after reconnect
-        socket.emit('join', myUsername);
-      });
-
-      socket.on('connect', () => {
-        statusDot.classList.remove('disconnected');
-        connectionLabel.textContent = 'Connected';
-      });
+    } else {
+      document.getElementById('login-user').focus();
     }
+  };
 
-    // ============================================================
-    // MESSAGE RENDERING
-    // ============================================================
+  // ============================================================
+  // TAB SWITCHING (Login / Register)
+  // ============================================================
+  function switchTab(tab) {
+    if (tab === 'login') {
+      document.getElementById('form-login').style.display = '';
+      document.getElementById('form-register').style.display = 'none';
+      document.getElementById('tab-login').className = 'tab-btn active-tab';
+      document.getElementById('tab-register').className = 'tab-btn';
+      document.getElementById('login-user').focus();
+    } else {
+      document.getElementById('form-login').style.display = 'none';
+      document.getElementById('form-register').style.display = '';
+      document.getElementById('tab-login').className = 'tab-btn';
+      document.getElementById('tab-register').className = 'tab-btn active-tab';
+      document.getElementById('reg-user').focus();
+    }
+  }
 
-    function renderMessage(msg, channel) {
-      // Only render if this message belongs to the active channel
-      // (For public messages that arrive while viewing a DM, etc.)
-      const isActiveChannel =
-        (channel === 'public' && currentChannelType === 'public' && currentChannel === 'public') ||
-        (channel === currentChannel);
+  // ============================================================
+  // LOGIN
+  // ============================================================
+  document.getElementById('login-btn').onclick = doLogin;
+  document.getElementById('login-user').onkeydown = function(e) { if (e.keyCode === 13) doLogin(); };
+  document.getElementById('login-pass').onkeydown = function(e) { if (e.keyCode === 13) doLogin(); };
 
-      // For initial load, we render regardless
-      // The caller handles filtering
+  function doLogin() {
+    var user = document.getElementById('login-user').value;
+    var pass = document.getElementById('login-pass').value;
+    var errDiv = document.getElementById('login-error');
 
-      const div = document.createElement('div');
-      div.className = 'message';
-      div.dataset.id = msg.id;
+    if (!user || !pass) { errDiv.innerHTML = 'Fill in both fields'; return; }
+    errDiv.innerHTML = 'Signing in...';
+    document.getElementById('login-btn').disabled = true;
 
-      if (msg.type === 'system') {
-        div.classList.add('system-message');
-        div.innerHTML = `
-          <span class="timestamp">${formatTime(msg.timestamp)}</span>
-          ${escapeHtml(msg.text)}
-        `;
+    fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: user, password: pass })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      document.getElementById('login-btn').disabled = false;
+      if (data.error) {
+        errDiv.innerHTML = escapeHtml(data.error);
       } else {
-        const fileHtml = msg.file ? renderFilePreview(msg.file) : '';
-        div.innerHTML = `
-          <span class="timestamp">${formatTime(msg.timestamp)}</span>
-          <span class="username" style="color:${msg.color || msg.fromColor}" onclick="openDm('${escapeHtml(msg.username || msg.from)}')">${escapeHtml(msg.username || msg.from)}</span>
-          <span class="msg-text">${escapeHtml(msg.text)}</span>
-          ${fileHtml}
-        `;
+        myUsername = data.username;
+        myDisplayName = data.displayName;
+        myColor = data.color;
+        myToken = data.token;
+        localStorage.setItem('jorgechat_token', myToken);
+        enterChat();
       }
+    })
+    .catch(function(e) {
+      document.getElementById('login-btn').disabled = false;
+      errDiv.innerHTML = 'Connection error';
+    });
+  }
 
-      messagesDiv.appendChild(div);
-    }
+  // ============================================================
+  // REGISTER
+  // ============================================================
+  document.getElementById('reg-btn').onclick = doRegister;
+  document.getElementById('reg-user').onkeydown = function(e) { if (e.keyCode === 13) doRegister(); };
+  document.getElementById('reg-display').onkeydown = function(e) { if (e.keyCode === 13) doRegister(); };
+  document.getElementById('reg-pass').onkeydown = function(e) { if (e.keyCode === 13) doRegister(); };
 
-    // Generates HTML for file previews based on file type
-    function renderFilePreview(file) {
-      if (!file) return '';
+  function doRegister() {
+    var user = document.getElementById('reg-user').value;
+    var display = document.getElementById('reg-display').value;
+    var pass = document.getElementById('reg-pass').value;
+    var errDiv = document.getElementById('reg-error');
 
-      let preview = '<div class="file-preview">';
+    if (!user || !display || !pass) { errDiv.innerHTML = 'Fill in all fields'; return; }
+    errDiv.innerHTML = 'Creating account...';
+    document.getElementById('reg-btn').disabled = true;
 
-      switch (file.fileType) {
-        case 'image':
-          // Clickable image that opens in lightbox
-          preview += `<img src="${file.url}" alt="${escapeHtml(file.originalName)}" onclick="openLightbox('${file.url}')" loading="lazy">`;
-          break;
-        case 'video':
-          // Inline video player with controls
-          preview += `<video controls preload="metadata"><source src="${file.url}" type="${file.mimeType}"></video>`;
-          break;
-        case 'audio':
-          // Inline audio player
-          preview += `<audio controls preload="metadata"><source src="${file.url}" type="${file.mimeType}"></audio>`;
-          break;
-        default:
-          // Generic download link for other file types
-          preview += `<a href="${file.url}" download class="file-download">📄 ${escapeHtml(file.originalName)} <span class="file-size">(${formatFileSize(file.size)})</span></a>`;
+    fetch('/api/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: user, displayName: display, password: pass })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      document.getElementById('reg-btn').disabled = false;
+      if (data.error) {
+        errDiv.innerHTML = escapeHtml(data.error);
+      } else {
+        myUsername = data.username;
+        myDisplayName = data.displayName;
+        myColor = data.color;
+        myToken = data.token;
+        localStorage.setItem('jorgechat_token', myToken);
+        enterChat();
       }
+    })
+    .catch(function(e) {
+      document.getElementById('reg-btn').disabled = false;
+      errDiv.innerHTML = 'Connection error';
+    });
+  }
 
-      preview += '</div>';
-      return preview;
-    }
+  // ============================================================
+  // LOGOUT
+  // ============================================================
+  function doLogout() {
+    localStorage.removeItem('jorgechat_token');
+    if (socket) socket.disconnect();
+    location.reload();
+  }
 
-    // ============================================================
-    // SENDING MESSAGES
-    // ============================================================
+  // ============================================================
+  // ENTER CHAT — connect socket and switch to chat view
+  // ============================================================
+  function enterChat() {
+    authScreen.style.display = 'none';
+    chatScreen.style.display = 'block';
+    myDisplaySpan.innerHTML = escapeHtml(myDisplayName);
 
-    sendBtn.addEventListener('click', sendMessage);
-    msgInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        sendMessage();
-      }
+    socket = io({ transports: ['websocket', 'polling'], upgrade: true, rememberUpgrade: true });
+
+    socket.on('connect', function() {
+      socket.emit('join', { token: myToken });
     });
 
-    // Typing indicator — fires when user is typing, debounced
-    msgInput.addEventListener('input', () => {
-      if (!socket) return;
-
-      if (currentChannelType === 'public') {
-        socket.emit('typing', { room: 'public' });
-      } else if (currentChannelType === 'room') {
-        const roomId = currentChannel.replace('room:', '');
-        socket.emit('typing', { room: roomId });
-      } else if (currentChannelType === 'dm') {
-        const targetUser = currentChannel.replace('dm:', '');
-        socket.emit('typing', { to: targetUser });
-      }
+    socket.on('joined', function(data) {
+      // No history — messages array is empty. Clean slate.
+      updateUserList(data.onlineUsers);
+      updateRoomsList(data.rooms);
+      msgInput.focus();
+      statusBarText.innerHTML = 'Connected as ' + escapeHtml(myDisplayName);
     });
 
-    async function sendMessage() {
-      const text = msgInput.value.trim();
-      if (!text && !pendingFile) return;
+    socket.on('join-error', function(err) {
+      alert(err);
+      doLogout();
+    });
 
-      let fileData = null;
+    setupSocketListeners();
+  }
 
-      // If there's a pending file, upload it first
-      if (pendingFile) {
-        fileData = await uploadFile(pendingFile);
-        if (!fileData) return; // upload failed
+  // ============================================================
+  // SOCKET LISTENERS
+  // ============================================================
+  function setupSocketListeners() {
+    socket.on('public-message', function(msg) {
+      if (currentChannel === 'public' && currentChannelType === 'public') {
+        renderMessage(msg); scrollToBottom();
+      } else { incrementUnread('public'); }
+    });
+
+    socket.on('dm', function(msg) {
+      var otherUser = msg.from === myUsername ? msg.to : msg.from;
+      var dmKey = 'dm:' + otherUser;
+      if (currentChannel === dmKey && currentChannelType === 'dm') {
+        renderMessage(msg); scrollToBottom();
+      } else { incrementUnread(dmKey); }
+    });
+
+    socket.on('dm-history', function(data) {
+      messagesDiv.innerHTML = '';
+      // Will be empty since we don't persist DM history
+      scrollToBottom();
+    });
+
+    socket.on('dm-error', function(err) { statusBarText.innerHTML = 'DM Error: ' + escapeHtml(err); });
+
+    socket.on('room-message', function(data) {
+      var roomKey = 'room:' + data.roomId;
+      if (currentChannel === roomKey && currentChannelType === 'room') {
+        renderMessage(data.message); scrollToBottom();
+      } else { incrementUnread(roomKey); }
+    });
+
+    socket.on('room-joined', function(data) {
+      messagesDiv.innerHTML = '';
+      scrollToBottom();
+    });
+
+    socket.on('room-created', function(data) { switchToRoom(data.id, data.name); });
+    socket.on('room-error', function(err) { statusBarText.innerHTML = 'Room Error: ' + escapeHtml(err); });
+    socket.on('online-users', function(users) { updateUserList(users); });
+    socket.on('rooms-list', function(roomsList) { updateRoomsList(roomsList); });
+    socket.on('typing', function(data) { showTypingIndicator(data.displayName); });
+
+    socket.on('disconnect', function() {
+      statusIcon.style.color = '#ff0000';
+      connectionLabel.innerHTML = 'Disconnected';
+      statusBarText.innerHTML = 'Connection lost. Reconnecting...';
+    });
+
+    socket.on('connect', function() {
+      statusIcon.style.color = '#00cc00';
+      connectionLabel.innerHTML = 'Connected';
+      statusBarText.innerHTML = 'Connected';
+    });
+  }
+
+  // ============================================================
+  // RENDERING
+  // ============================================================
+  function renderMessage(msg) {
+    var div = document.createElement('div');
+    div.style.padding = '1px 0';
+    if (msg.type === 'system') {
+      div.className = 'msg-system';
+      div.innerHTML = '<span class="msg-time">[' + formatTime(msg.timestamp) + ']</span> *** ' + escapeHtml(msg.text) + ' ***';
+    } else {
+      // Use displayName for chat, username for DM targeting
+      var display = msg.displayName || msg.fromDisplay || msg.username || msg.from;
+      var targetUser = msg.username || msg.from; // the actual username for DMs
+      var color = msg.color || msg.fromColor || '#000000';
+      var fileHtml = msg.file ? renderFilePreview(msg.file) : '';
+      div.innerHTML = '<span class="msg-time">[' + formatTime(msg.timestamp) + ']</span> ' +
+        '<span class="msg-user" style="color:' + color + ';" onclick="openDm(\'' + escapeAttr(targetUser) + '\')">&lt;' +
+        escapeHtml(display) + '&gt;</span> ' +
+        '<span class="msg-text">' + escapeHtml(msg.text || '') + '</span>' + fileHtml;
+    }
+    messagesDiv.appendChild(div);
+  }
+
+  function renderFilePreview(file) {
+    if (!file) return '';
+    var html = '<div class="file-preview" style="margin: 2px 0 2px 20px;">';
+    if (file.fileType === 'image') {
+      html += '<br><img src="' + file.url + '" alt="' + escapeHtml(file.originalName) + '" onclick="openLightbox(\'' + file.url + '\')">';
+    } else if (file.fileType === 'video') {
+      html += '<br><video controls width="320"><source src="' + file.url + '" type="' + file.mimeType + '"></video>';
+    } else if (file.fileType === 'audio') {
+      html += '<br><audio controls><source src="' + file.url + '" type="' + file.mimeType + '"></audio>';
+    } else {
+      html += '<br><a href="' + file.url + '" download>&#128196; ' + escapeHtml(file.originalName) + ' (' + formatFileSize(file.size) + ')</a>';
+    }
+    html += '</div>';
+    return html;
+  }
+
+  // ============================================================
+  // SENDING
+  // ============================================================
+  sendBtn.onclick = sendMessage;
+  msgInput.onkeydown = function(e) { if (e.keyCode === 13) { e.preventDefault(); sendMessage(); } };
+
+  msgInput.oninput = function() {
+    if (!socket) return;
+    if (currentChannelType === 'public') socket.emit('typing', { room: 'public' });
+    else if (currentChannelType === 'room') socket.emit('typing', { room: currentChannel.replace('room:', '') });
+    else if (currentChannelType === 'dm') socket.emit('typing', { to: currentChannel.replace('dm:', '') });
+  };
+
+  function sendMessage() {
+    var text = msgInput.value.replace(/^\s+|\s+$/g, '');
+    if (!text && !pendingFileData) return;
+    if (pendingFileData) {
+      uploadFile(pendingFileData, function(fileData) {
+        if (!fileData) return;
         clearPendingFile();
-      }
-
-      // Send based on current channel type
-      if (currentChannelType === 'public') {
-        socket.emit('public-message', { text, file: fileData });
-      } else if (currentChannelType === 'dm') {
-        const targetUser = currentChannel.replace('dm:', '');
-        socket.emit('dm', { to: targetUser, text, file: fileData });
-      } else if (currentChannelType === 'room') {
-        const roomId = currentChannel.replace('room:', '');
-        socket.emit('room-message', { roomId, text, file: fileData });
-      }
-
-      msgInput.value = '';
-      msgInput.focus();
-    }
-
-    // ============================================================
-    // FILE UPLOAD
-    // ============================================================
-
-    fileInput.addEventListener('change', (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-
-      // Check file size (50MB limit)
-      if (file.size > 50 * 1024 * 1024) {
-        alert('File too large! Max 50MB.');
-        fileInput.value = '';
-        return;
-      }
-
-      pendingFile = file;
-      pendingFileName.textContent = `${file.name} (${formatFileSize(file.size)})`;
-      pendingFileDiv.classList.add('active');
-      fileInput.value = ''; // reset so same file can be re-selected
-    });
-
-    function clearPendingFile() {
-      pendingFile = null;
-      pendingFileDiv.classList.remove('active');
-      pendingFileName.textContent = '';
-    }
-
-    // Uploads file via HTTP POST to /upload, returns file metadata
-    async function uploadFile(file) {
-      const formData = new FormData();
-      formData.append('file', file);
-
-      uploadProgress.classList.add('active');
-      uploadProgressBar.style.width = '0%';
-
-      try {
-        // XMLHttpRequest for upload progress tracking
-        // (fetch API doesn't support upload progress)
-        return await new Promise((resolve, reject) => {
-          const xhr = new XMLHttpRequest();
-
-          xhr.upload.addEventListener('progress', (e) => {
-            if (e.lengthComputable) {
-              const pct = (e.loaded / e.total) * 100;
-              uploadProgressBar.style.width = pct + '%';
-            }
-          });
-
-          xhr.addEventListener('load', () => {
-            uploadProgress.classList.remove('active');
-            if (xhr.status === 200) {
-              resolve(JSON.parse(xhr.responseText));
-            } else {
-              reject(new Error('Upload failed'));
-            }
-          });
-
-          xhr.addEventListener('error', () => {
-            uploadProgress.classList.remove('active');
-            reject(new Error('Upload error'));
-          });
-
-          xhr.open('POST', '/upload');
-          xhr.send(formData);
-        });
-      } catch (err) {
-        console.error('Upload failed:', err);
-        uploadProgress.classList.remove('active');
-        alert('File upload failed. Try again.');
-        return null;
-      }
-    }
-
-    // ============================================================
-    // CHANNEL SWITCHING
-    // ============================================================
-
-    function switchChannel(channel) {
-      // Leave current room if it was a Socket.IO room
-      if (currentChannelType === 'room') {
-        // We don't actually leave the room — just switch view
-        // User can explicitly leave via UI
-      }
-
-      currentChannel = channel;
-      currentChannelType = 'public';
-
-      // Update UI
-      channelTitle.textContent = '# public';
-      channelInfo.textContent = 'Main chat room';
-      messagesDiv.innerHTML = '';
-
-      // Clear unread badge
-      clearUnread('public');
-
-      // Update active state in sidebar
-      updateActiveChannel();
-
-      // Re-request public messages (they're rendered from the
-      // socket events that already arrived, but we also re-render
-      // from the server's perspective by reconnecting to the view)
-      // For simplicity, just request a re-join which resends history
-      // Actually, public messages are stored client-side too via events
-      // So we need to store them. Let's re-emit a join to get fresh data.
-      // ... Actually, let's just keep it simple: the messages arrive
-      // via the 'public-message' event and we've been rendering them
-      // even when on other channels. The issue is we clear messagesDiv.
-      // The cleanest fix: store messages per channel client-side.
-
-      // For now, we'll request the server to re-send. This works
-      // because public messages are broadcast to all in 'public' room.
-      // On channel switch, we re-fetch by disconnecting/reconnecting.
-      // TODO: client-side message cache. For v1, just rejoin.
-      socket.emit('join', myUsername);
-
-      msgInput.focus();
-    }
-
-    function openDm(username) {
-      if (username === myUsername) return; // can't DM yourself
-
-      const dmKey = `dm:${username}`;
-      currentChannel = dmKey;
-      currentChannelType = 'dm';
-
-      channelTitle.textContent = `DM: ${username}`;
-      channelInfo.textContent = 'Private conversation';
-      messagesDiv.innerHTML = '';
-
-      clearUnread(dmKey);
-      updateActiveChannel();
-
-      // Request DM history from server
-      socket.emit('dm-history', username);
-
-      msgInput.placeholder = `Message ${username}...`;
-      msgInput.focus();
-    }
-
-    function switchToRoom(roomId, roomName) {
-      const roomKey = `room:${roomId}`;
-      currentChannel = roomKey;
-      currentChannelType = 'room';
-
-      channelTitle.textContent = `# ${roomName}`;
-      channelInfo.textContent = 'Private room';
-      messagesDiv.innerHTML = '';
-
-      clearUnread(roomKey);
-      updateActiveChannel();
-
-      // Join the room on the server side
-      socket.emit('join-room', roomId);
-
-      msgInput.placeholder = `Message #${roomName}...`;
-      msgInput.focus();
-    }
-
-    function updateActiveChannel() {
-      // Remove active from all sidebar items
-      document.querySelectorAll('.sidebar-item').forEach(el => {
-        el.classList.remove('active');
+        emitMessage(text, fileData);
       });
+    } else { emitMessage(text, null); }
+    msgInput.value = '';
+    msgInput.focus();
+  }
 
-      // Set active on current
-      if (currentChannelType === 'public') {
-        document.querySelector('[data-channel="public"]')?.classList.add('active');
-        msgInput.placeholder = 'Type a message...';
-      }
+  function emitMessage(text, fileData) {
+    if (currentChannelType === 'public') socket.emit('public-message', { text: text, file: fileData });
+    else if (currentChannelType === 'dm') socket.emit('dm', { to: currentChannel.replace('dm:', ''), text: text, file: fileData });
+    else if (currentChannelType === 'room') socket.emit('room-message', { roomId: currentChannel.replace('room:', ''), text: text, file: fileData });
+  }
+
+  // FILES
+  fileInputEl.onchange = function() {
+    var file = fileInputEl.files[0];
+    if (!file) return;
+    if (file.size > 50 * 1024 * 1024) { alert('File too large! Max 50MB.'); fileInputEl.value = ''; return; }
+    pendingFileData = file;
+    pendingFileNameEl.innerHTML = escapeHtml(file.name) + ' (' + formatFileSize(file.size) + ')';
+    pendingFileDiv.style.display = 'block';
+    fileInputEl.value = '';
+  };
+
+  function clearPendingFile() {
+    pendingFileData = null;
+    pendingFileDiv.style.display = 'none';
+    pendingFileNameEl.innerHTML = '';
+  }
+
+  function uploadFile(file, callback) {
+    var formData = new FormData();
+    formData.append('file', file);
+    statusBarText.innerHTML = 'Uploading ' + escapeHtml(file.name) + '...';
+    var xhr = new XMLHttpRequest();
+    xhr.onload = function() {
+      if (xhr.status === 200) { statusBarText.innerHTML = 'Upload complete.'; callback(JSON.parse(xhr.responseText)); }
+      else { statusBarText.innerHTML = 'Upload failed!'; callback(null); }
+    };
+    xhr.onerror = function() { statusBarText.innerHTML = 'Upload error!'; callback(null); };
+    xhr.open('POST', '/upload');
+    xhr.send(formData);
+  }
+
+  // CHANNELS
+  function switchChannel(channel) {
+    currentChannel = channel; currentChannelType = 'public';
+    channelTitle.innerHTML = '# public';
+    channelInfo.innerHTML = 'Main chat room';
+    messagesDiv.innerHTML = ''; // fresh start, no history
+    clearUnread('public');
+    updateActiveChannel();
+    msgInput.placeholder = 'Type a message...';
+    msgInput.focus();
+  }
+
+  function openDm(username) {
+    if (username === myUsername) return;
+    var dmKey = 'dm:' + username;
+    currentChannel = dmKey; currentChannelType = 'dm';
+    // Find the display name from the user list
+    var displayName = username;
+    var items = userListDiv.children;
+    // Just use username for now in the header
+    channelTitle.innerHTML = 'DM: ' + escapeHtml(username);
+    channelInfo.innerHTML = 'Private conversation';
+    messagesDiv.innerHTML = '';
+    clearUnread(dmKey);
+    updateActiveChannel();
+    socket.emit('dm-history', username);
+    msgInput.placeholder = 'Message ' + username + '...';
+    msgInput.focus();
+    statusBarText.innerHTML = 'Private chat with ' + escapeHtml(username);
+  }
+
+  function switchToRoom(roomId, roomName) {
+    var roomKey = 'room:' + roomId;
+    currentChannel = roomKey; currentChannelType = 'room';
+    channelTitle.innerHTML = '# ' + escapeHtml(roomName);
+    channelInfo.innerHTML = 'Private room';
+    messagesDiv.innerHTML = '';
+    clearUnread(roomKey);
+    updateActiveChannel();
+    socket.emit('join-room', roomId);
+    msgInput.placeholder = 'Message #' + roomName + '...';
+    msgInput.focus();
+  }
+
+  function updateActiveChannel() {
+    var pubEl = document.getElementById('ch-public');
+    if (pubEl) pubEl.className = (currentChannelType === 'public') ? 'sidebar-item sidebar-item-active' : 'sidebar-item';
+  }
+
+  // ROOMS
+  function showCreateRoom() {
+    document.getElementById('modal-bg').style.display = 'block';
+    document.getElementById('create-room-modal').style.display = 'block';
+    document.getElementById('room-name-input').focus();
+  }
+  function hideCreateRoom() {
+    document.getElementById('modal-bg').style.display = 'none';
+    document.getElementById('create-room-modal').style.display = 'none';
+    document.getElementById('room-name-input').value = '';
+  }
+  document.getElementById('room-name-input').onkeydown = function(e) {
+    if (e.keyCode === 13) createRoom();
+    if (e.keyCode === 27) hideCreateRoom();
+  };
+  function createRoom() {
+    var name = document.getElementById('room-name-input').value.replace(/^\s+|\s+$/g, '');
+    if (!name) return;
+    socket.emit('create-room', name);
+    hideCreateRoom();
+  }
+
+  function updateRoomsList(roomsList) {
+    roomsListDiv.innerHTML = '';
+    for (var i = 0; i < roomsList.length; i++) {
+      var room = roomsList[i];
+      var div = document.createElement('div');
+      var isActive = currentChannel === ('room:' + room.id);
+      div.className = isActive ? 'sidebar-item sidebar-item-active' : 'sidebar-item';
+      var unread = unreadCounts['room:' + room.id] || 0;
+      var badgeHtml = unread > 0 ? ' <span class="badge">' + unread + '</span>' : '';
+      div.innerHTML = '# ' + escapeHtml(room.name) + badgeHtml;
+      div.onclick = (function(id, name) { return function() { switchToRoom(id, name); }; })(room.id, room.name);
+      roomsListDiv.appendChild(div);
     }
+  }
 
-    // ============================================================
-    // ROOMS
-    // ============================================================
-
-    function showCreateRoom() {
-      document.getElementById('create-room-modal').classList.add('active');
-      document.getElementById('room-name-input').focus();
+  // USERS — now shows displayName with username for DM targeting
+  function updateUserList(users) {
+    onlineCount.innerHTML = users.length;
+    userListDiv.innerHTML = '';
+    for (var i = 0; i < users.length; i++) {
+      var u = users[i]; // { username, displayName }
+      var div = document.createElement('div');
+      var isActive = currentChannel === ('dm:' + u.username);
+      div.className = isActive ? 'sidebar-item sidebar-item-active' : 'sidebar-item';
+      var isSelf = u.username === myUsername;
+      var unread = unreadCounts['dm:' + u.username] || 0;
+      var badgeHtml = unread > 0 ? ' <span class="badge">' + unread + '</span>' : '';
+      var selfTag = isSelf ? ' <span style="color:#808080;">(you)</span>' : '';
+      div.innerHTML = '<span style="color:#00cc00;">&#9679;</span> ' + escapeHtml(u.displayName) + selfTag + badgeHtml;
+      if (!isSelf) div.onclick = (function(un) { return function() { openDm(un); }; })(u.username);
+      userListDiv.appendChild(div);
     }
+  }
 
-    function hideCreateRoom() {
-      document.getElementById('create-room-modal').classList.remove('active');
-      document.getElementById('room-name-input').value = '';
-    }
+  // UNREAD
+  function incrementUnread(channel) { unreadCounts[channel] = (unreadCounts[channel] || 0) + 1; }
+  function clearUnread(channel) { unreadCounts[channel] = 0; }
 
-    // Enter key in room name input
-    document.getElementById('room-name-input').addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') createRoom();
-      if (e.key === 'Escape') hideCreateRoom();
-    });
+  // TYPING
+  function showTypingIndicator(displayName) {
+    typingIndicator.innerHTML = escapeHtml(displayName) + ' is typing...';
+    clearTimeout(typingClearTimeout);
+    typingClearTimeout = setTimeout(function() { typingIndicator.innerHTML = ''; }, 2000);
+  }
 
-    function createRoom() {
-      const name = document.getElementById('room-name-input').value.trim();
-      if (!name) return;
-      socket.emit('create-room', name);
-      hideCreateRoom();
-    }
+  // LIGHTBOX
+  function openLightbox(url) {
+    document.getElementById('lightbox-img').src = url;
+    document.getElementById('lightbox-bg').style.display = 'block';
+    document.getElementById('lightbox-content').style.display = 'block';
+  }
+  function closeLightbox() {
+    document.getElementById('lightbox-bg').style.display = 'none';
+    document.getElementById('lightbox-content').style.display = 'none';
+  }
 
-    function updateRoomsList(roomsList) {
-      roomsListDiv.innerHTML = '';
-      roomsList.forEach(room => {
-        const div = document.createElement('div');
-        div.className = 'sidebar-item';
-        div.dataset.channel = `room:${room.id}`;
+  document.onkeydown = function(e) {
+    if (e.keyCode === 27) { closeLightbox(); hideCreateRoom(); }
+  };
 
-        const isActive = currentChannel === `room:${room.id}`;
-        if (isActive) div.classList.add('active');
-
-        const unread = unreadCounts[`room:${room.id}`] || 0;
-        const badge = unread > 0 ? `<span class="badge">${unread}</span>` : '';
-
-        div.innerHTML = `<span class="channel-hash">#</span> ${escapeHtml(room.name)} ${badge}`;
-        div.onclick = () => switchToRoom(room.id, room.name);
-        roomsListDiv.appendChild(div);
-      });
-    }
-
-    // ============================================================
-    // USER LIST
-    // ============================================================
-
-    function updateUserList(users) {
-      onlineCount.textContent = users.length;
-      userListDiv.innerHTML = '';
-      users.forEach(username => {
-        const div = document.createElement('div');
-        div.className = 'sidebar-item';
-        div.dataset.channel = `dm:${username}`;
-
-        const isActive = currentChannel === `dm:${username}`;
-        if (isActive) div.classList.add('active');
-
-        const unread = unreadCounts[`dm:${username}`] || 0;
-        const badge = unread > 0 ? `<span class="badge">${unread}</span>` : '';
-
-        const isSelf = username === myUsername;
-        div.innerHTML = `<span class="user-dot"></span> ${escapeHtml(username)}${isSelf ? ' (you)' : ''} ${badge}`;
-
-        if (!isSelf) {
-          div.onclick = () => openDm(username);
-        }
-
-        userListDiv.appendChild(div);
-      });
-    }
-
-    // ============================================================
-    // UNREAD BADGES
-    // ============================================================
-
-    function incrementUnread(channel) {
-      unreadCounts[channel] = (unreadCounts[channel] || 0) + 1;
-      updateBadge(channel);
-    }
-
-    function clearUnread(channel) {
-      unreadCounts[channel] = 0;
-      updateBadge(channel);
-    }
-
-    function updateBadge(channel) {
-      const el = document.querySelector(`[data-channel="${channel}"]`);
-      if (!el) return;
-
-      let badge = el.querySelector('.badge');
-      const count = unreadCounts[channel] || 0;
-
-      if (count > 0) {
-        if (!badge) {
-          badge = document.createElement('span');
-          badge.className = 'badge';
-          el.appendChild(badge);
-        }
-        badge.textContent = count;
-      } else if (badge) {
-        badge.remove();
-      }
-    }
-
-    // ============================================================
-    // TYPING INDICATOR
-    // ============================================================
-
-    let typingClearTimeout = null;
-
-    function showTypingIndicator(username) {
-      typingIndicator.textContent = `${username} is typing...`;
-
-      // Clear after 2 seconds of no new typing events
-      clearTimeout(typingClearTimeout);
-      typingClearTimeout = setTimeout(() => {
-        typingIndicator.textContent = '';
-      }, 2000);
-    }
-
-    // ============================================================
-    // LIGHTBOX (image zoom)
-    // ============================================================
-
-    function openLightbox(url) {
-      document.getElementById('lightbox-img').src = url;
-      document.getElementById('lightbox').classList.add('active');
-    }
-
-    function closeLightbox() {
-      document.getElementById('lightbox').classList.remove('active');
-    }
-
-    // Close lightbox with Escape key
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') closeLightbox();
-    });
-
-    // ============================================================
-    // MOBILE SIDEBAR TOGGLE
-    // ============================================================
-
-    document.getElementById('sidebar-toggle').addEventListener('click', () => {
-      document.getElementById('sidebar').classList.toggle('open');
-    });
-
-    // Close sidebar when clicking on main area (mobile)
-    document.querySelector('.chat-main').addEventListener('click', () => {
-      document.getElementById('sidebar').classList.remove('open');
-    });
-
-    // ============================================================
-    // UTILITY FUNCTIONS
-    // ============================================================
-
-    // Formats a timestamp into HH:MM format
-    function formatTime(ts) {
-      const d = new Date(ts);
-      return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    }
-
-    // Prevents XSS by escaping HTML special characters
-    function escapeHtml(text) {
-      const div = document.createElement('div');
-      div.textContent = text;
-      return div.innerHTML;
-    }
-
-    // Human-readable file sizes
-    function formatFileSize(bytes) {
-      if (bytes < 1024) return bytes + ' B';
-      if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
-      return (bytes / 1048576).toFixed(1) + ' MB';
-    }
-
-    // Scrolls the message area to the latest message
-    function scrollToBottom() {
-      requestAnimationFrame(() => {
-        messagesDiv.scrollTop = messagesDiv.scrollHeight;
-      });
-    }
-  </script>
+  // UTILS
+  function formatTime(ts) {
+    var d = new Date(ts);
+    var h = d.getHours(); var m = d.getMinutes();
+    if (h < 10) h = '0' + h;
+    if (m < 10) m = '0' + m;
+    return h + ':' + m;
+  }
+  function escapeHtml(text) {
+    if (!text) return '';
+    var div = document.createElement('div');
+    div.appendChild(document.createTextNode(text));
+    return div.innerHTML;
+  }
+  function escapeAttr(text) {
+    return escapeHtml(text).replace(/'/g, '&#39;').replace(/"/g, '&quot;');
+  }
+  function formatFileSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / 1048576).toFixed(1) + ' MB';
+  }
+  function scrollToBottom() {
+    if (messagesDiv) messagesDiv.scrollTop = messagesDiv.scrollHeight;
+  }
+</script>
 </body>
 </html>

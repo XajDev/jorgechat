@@ -1,50 +1,80 @@
 // ============================================================
-// JorgeChat Server — jorgepompacarrera.net
-// Express + Socket.IO real-time chat with file uploads
-// ============================================================
-// Socket.IO automatically tries WebSocket first, then falls
-// back to HTTP long-polling if the network blocks WebSockets.
-// This means it works even on school/work networks that
-// aggressively filter traffic. No config needed from the user.
+// JorgeChat Server v2 — jorgepompacarrera.net
+// Now with persistent accounts, display names, and no
+// message history sent on join (you only see what happens
+// after you load the page).
 // ============================================================
 
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
-const multer = require('multer');        // middleware for handling file uploads
+const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
-const { v4: uuidv4 } = require('uuid'); // generates unique IDs for files & messages
-const mime = require('mime-types');       // detects file types from extensions
+const { v4: uuidv4 } = require('uuid');
+const mime = require('mime-types');
+const bcrypt = require('bcryptjs'); // for hashing passwords securely
 
 const app = express();
 const server = http.createServer(app);
 
-// Socket.IO server config — the "transports" array defines the
-// priority order. It tries WebSocket first (fast, bidirectional),
-// then falls back to polling (works through almost any firewall).
 const io = new Server(server, {
   cors: { origin: '*' },
   transports: ['websocket', 'polling'],
-  // Max payload size for socket messages (not file uploads —
-  // those go through the HTTP upload endpoint)
-  maxHttpBufferSize: 1e8, // 100MB
+  maxHttpBufferSize: 1e8,
 });
+
+// ============================================================
+// PERSISTENT ACCOUNT STORAGE
+// ============================================================
+// Accounts are saved to a JSON file on disk so they survive
+// server restarts. Each account has:
+//   username: unique login name (lowercase for comparison)
+//   displayName: what shows in chat (can have caps/style)
+//   passwordHash: bcrypt hash of their password
+//   color: their assigned chat color
+//   token: a session token so they stay logged in
+//
+// On Railway, the filesystem persists between deploys as long
+// as you don't wipe the volume. If it does reset, users just
+// re-register — no big deal for a meme chat.
+
+const DATA_DIR = path.join(__dirname, 'data');
+const ACCOUNTS_FILE = path.join(DATA_DIR, 'accounts.json');
+
+// Make sure the data directory exists
+if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR);
+
+// Load existing accounts from disk, or start fresh
+let accounts = {};
+if (fs.existsSync(ACCOUNTS_FILE)) {
+  try {
+    accounts = JSON.parse(fs.readFileSync(ACCOUNTS_FILE, 'utf-8'));
+    console.log(`Loaded ${Object.keys(accounts).length} accounts`);
+  } catch (e) {
+    console.error('Failed to load accounts, starting fresh:', e.message);
+    accounts = {};
+  }
+}
+
+// Save accounts to disk — called after any account change
+function saveAccounts() {
+  try {
+    fs.writeFileSync(ACCOUNTS_FILE, JSON.stringify(accounts, null, 2));
+  } catch (e) {
+    console.error('Failed to save accounts:', e.message);
+  }
+}
 
 // ============================================================
 // FILE UPLOAD SETUP
 // ============================================================
-// Multer saves uploaded files to the /uploads folder on disk.
-// We rename each file with a UUID to avoid name collisions
-// (two people uploading "image.png" won't overwrite each other).
-
 const uploadDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, uploadDir),
   filename: (req, file, cb) => {
-    // UUID prefix ensures uniqueness, original name preserved for display
     const uniqueName = `${uuidv4()}-${file.originalname}`;
     cb(null, uniqueName);
   }
@@ -52,37 +82,25 @@ const storage = multer.diskStorage({
 
 const upload = multer({
   storage,
-  limits: { fileSize: 50 * 1024 * 1024 } // 50MB max per file
+  limits: { fileSize: 50 * 1024 * 1024 }
 });
 
 // ============================================================
-// SERVE STATIC FILES
+// EXPRESS MIDDLEWARE & ROUTES
 // ============================================================
-// The "public" folder holds our frontend (HTML/CSS/JS).
-// Express serves these automatically when someone visits the site.
-
+app.use(express.json()); // parse JSON request bodies (for login/register)
 app.use(express.static(path.join(__dirname, 'public')));
-
-// Serve uploaded files so the frontend can display/play them
 app.use('/uploads', express.static(uploadDir));
 
-// ============================================================
-// FILE UPLOAD ENDPOINT
-// ============================================================
-// POST /upload — accepts a file, saves it, returns metadata
-// so the frontend can display a preview in the chat.
-
+// File upload endpoint
 app.post('/upload', upload.single('file'), (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ error: 'No file uploaded' });
-  }
+  if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
 
-  // Figure out what kind of file this is for preview purposes
   const mimeType = mime.lookup(req.file.originalname) || 'application/octet-stream';
-  let fileType = 'file'; // default: generic download link
-  if (mimeType.startsWith('image/'))  fileType = 'image';
-  if (mimeType.startsWith('video/'))  fileType = 'video';
-  if (mimeType.startsWith('audio/'))  fileType = 'audio';
+  let fileType = 'file';
+  if (mimeType.startsWith('image/')) fileType = 'image';
+  if (mimeType.startsWith('video/')) fileType = 'video';
+  if (mimeType.startsWith('audio/')) fileType = 'audio';
 
   res.json({
     filename: req.file.filename,
@@ -94,141 +112,281 @@ app.post('/upload', upload.single('file'), (req, res) => {
   });
 });
 
-// ============================================================
-// IN-MEMORY DATA STORES
-// ============================================================
-// These hold all our chat state. On a free/cheap server this
-// means chat history resets on restart — that's fine for now.
-// A database (SQLite, Postgres) would make it persistent later.
+// ----------------------------------------------------------
+// REGISTER — create a new account
+// ----------------------------------------------------------
+app.post('/api/register', async (req, res) => {
+  const { username, displayName, password } = req.body;
 
-const users = new Map();          // socket.id -> { username, color }
-const publicMessages = [];        // array of message objects
+  // Validate input
+  if (!username || !password || !displayName) {
+    return res.status(400).json({ error: 'All fields required' });
+  }
+
+  // Username rules: 3-24 chars, alphanumeric + underscores only
+  const cleanUsername = username.trim().toLowerCase();
+  if (cleanUsername.length < 3 || cleanUsername.length > 24) {
+    return res.status(400).json({ error: 'Username must be 3-24 characters' });
+  }
+  if (!/^[a-z0-9_]+$/.test(cleanUsername)) {
+    return res.status(400).json({ error: 'Username: letters, numbers, underscores only' });
+  }
+
+  // Display name: 1-24 chars, anything goes
+  const cleanDisplay = displayName.trim().substring(0, 24);
+  if (!cleanDisplay) {
+    return res.status(400).json({ error: 'Display name required' });
+  }
+
+  // Password: at least 3 chars (it's a meme chat, not a bank)
+  if (password.length < 3) {
+    return res.status(400).json({ error: 'Password must be at least 3 characters' });
+  }
+
+  // Check if username already exists
+  if (accounts[cleanUsername]) {
+    return res.status(400).json({ error: 'Username already taken' });
+  }
+
+  // Hash the password — bcrypt automatically generates a salt
+  // The "10" is the cost factor (how many rounds of hashing).
+  // Higher = slower but more secure. 10 is fine for this.
+  const passwordHash = await bcrypt.hash(password, 10);
+
+  // Generate a session token — a random string the client stores
+  // in localStorage to stay logged in without re-entering password
+  const token = uuidv4();
+
+  // Pick a color for this user
+  const color = USER_COLORS[Object.keys(accounts).length % USER_COLORS.length];
+
+  // Save the account
+  accounts[cleanUsername] = {
+    username: cleanUsername,
+    displayName: cleanDisplay,
+    passwordHash,
+    color,
+    token,
+  };
+  saveAccounts();
+
+  console.log(`[+] New account: ${cleanUsername} (${cleanDisplay})`);
+
+  res.json({
+    username: cleanUsername,
+    displayName: cleanDisplay,
+    color,
+    token,
+  });
+});
+
+// ----------------------------------------------------------
+// LOGIN — authenticate with username + password
+// ----------------------------------------------------------
+app.post('/api/login', async (req, res) => {
+  const { username, password } = req.body;
+
+  if (!username || !password) {
+    return res.status(400).json({ error: 'Username and password required' });
+  }
+
+  const cleanUsername = username.trim().toLowerCase();
+  const account = accounts[cleanUsername];
+
+  if (!account) {
+    return res.status(401).json({ error: 'Invalid username or password' });
+  }
+
+  // bcrypt.compare() checks the plaintext password against the
+  // stored hash. It handles the salt extraction automatically.
+  const valid = await bcrypt.compare(password, account.passwordHash);
+  if (!valid) {
+    return res.status(401).json({ error: 'Invalid username or password' });
+  }
+
+  // Generate a new token on each login for security
+  account.token = uuidv4();
+  saveAccounts();
+
+  console.log(`[+] Login: ${cleanUsername}`);
+
+  res.json({
+    username: account.username,
+    displayName: account.displayName,
+    color: account.color,
+    token: account.token,
+  });
+});
+
+// ----------------------------------------------------------
+// TOKEN AUTH — auto-login with a stored token
+// ----------------------------------------------------------
+app.post('/api/auth', (req, res) => {
+  const { token } = req.body;
+  if (!token) return res.status(401).json({ error: 'No token' });
+
+  // Find the account with this token
+  const account = Object.values(accounts).find(a => a.token === token);
+  if (!account) return res.status(401).json({ error: 'Invalid token' });
+
+  res.json({
+    username: account.username,
+    displayName: account.displayName,
+    color: account.color,
+    token: account.token,
+  });
+});
+
+// ----------------------------------------------------------
+// UPDATE DISPLAY NAME
+// ----------------------------------------------------------
+app.post('/api/update-display', (req, res) => {
+  const { token, displayName } = req.body;
+  if (!token || !displayName) return res.status(400).json({ error: 'Missing fields' });
+
+  const account = Object.values(accounts).find(a => a.token === token);
+  if (!account) return res.status(401).json({ error: 'Invalid token' });
+
+  const cleanDisplay = displayName.trim().substring(0, 24);
+  if (!cleanDisplay) return res.status(400).json({ error: 'Display name required' });
+
+  account.displayName = cleanDisplay;
+  saveAccounts();
+
+  res.json({ displayName: cleanDisplay });
+});
+
+// ============================================================
+// IN-MEMORY CHAT STATE
+// ============================================================
+// Messages are NOT persisted — this is intentional.
+// When you load the page, you start fresh. No history.
+
+const onlineSockets = new Map();  // socket.id -> { username, displayName, color }
 const rooms = new Map();          // roomId -> { name, creator, members: Set, messages: [] }
-const dmConversations = new Map();// "user1::user2" (sorted) -> { messages: [] }
+const dmConversations = new Map();
 
-// Predefined colors for usernames — cycles through them
 const USER_COLORS = [
-  '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7',
-  '#DDA0DD', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9',
-  '#F0B27A', '#82E0AA', '#F1948A', '#AED6F1', '#D7BDE2',
-  '#A3E4D7', '#FAD7A0', '#A9CCE3', '#D5F5E3', '#FADBD8',
+  '#CC0000', '#0000CC', '#009900', '#CC6600', '#9900CC',
+  '#006666', '#CC0066', '#336699', '#669933', '#993366',
+  '#666600', '#006633', '#330066', '#663300', '#003366',
+  '#990000', '#000099', '#009966', '#996600', '#660099',
 ];
-let colorIndex = 0;
 
 // ============================================================
-// HELPER FUNCTIONS
+// HELPERS
 // ============================================================
-
-// Creates a consistent key for DM conversations between two users.
-// By sorting alphabetically, "alice::bob" and "bob::alice" map
-// to the same conversation — no duplicates.
 function getDmKey(user1, user2) {
   return [user1, user2].sort().join('::');
 }
 
-// Returns a list of all connected usernames (for the user list sidebar)
+// Returns online users with their display names
 function getOnlineUsers() {
-  return Array.from(users.values()).map(u => u.username);
+  return Array.from(onlineSockets.values()).map(u => ({
+    username: u.username,
+    displayName: u.displayName,
+  }));
 }
 
 // ============================================================
-// SOCKET.IO CONNECTION HANDLER
+// SOCKET.IO
 // ============================================================
-// This fires every time a new client connects. Each connected
-// user gets their own socket object that we attach listeners to.
-
 io.on('connection', (socket) => {
   console.log(`[+] Socket connected: ${socket.id}`);
 
   // ----------------------------------------------------------
-  // JOIN — user picks a username and enters the chat
+  // JOIN — authenticated user enters chat
+  // The client sends their token; we verify it server-side.
   // ----------------------------------------------------------
-  socket.on('join', (username) => {
-    // Clean up the username — strip whitespace, limit length
-    username = username.trim().substring(0, 24);
-    if (!username) return;
+  socket.on('join', (data) => {
+    if (!data || !data.token) return;
 
-    // Check if this username is already taken by someone online
-    const taken = Array.from(users.values()).some(
-      u => u.username.toLowerCase() === username.toLowerCase()
-    );
-    if (taken) {
-      socket.emit('join-error', 'That username is already taken');
+    // Find account by token
+    const account = Object.values(accounts).find(a => a.token === data.token);
+    if (!account) {
+      socket.emit('join-error', 'Invalid session. Please log in again.');
       return;
     }
 
-    // Assign a color from our palette and cycle the index
-    const color = USER_COLORS[colorIndex % USER_COLORS.length];
-    colorIndex++;
+    // Check if this account is already connected from another tab/device
+    const alreadyOnline = Array.from(onlineSockets.values()).some(
+      u => u.username === account.username
+    );
+    if (alreadyOnline) {
+      socket.emit('join-error', 'You are already connected in another window');
+      return;
+    }
 
-    // Store this user's info, keyed by their socket ID
-    users.set(socket.id, { username, color });
+    // Register this socket
+    onlineSockets.set(socket.id, {
+      username: account.username,
+      displayName: account.displayName,
+      color: account.color,
+    });
 
-    // Join the "public" room automatically
     socket.join('public');
 
-    // Tell THIS user they're in (sends back their info + history)
+    // Tell the client they're in — NO message history sent.
+    // They only see messages that arrive AFTER this point.
     socket.emit('joined', {
-      username,
-      color,
-      // Send the last 100 public messages so they have context
-      messages: publicMessages.slice(-100),
+      username: account.username,
+      displayName: account.displayName,
+      color: account.color,
+      messages: [], // empty! no history!
       onlineUsers: getOnlineUsers(),
       rooms: Array.from(rooms.entries()).map(([id, r]) => ({
         id, name: r.name, memberCount: r.members.size,
       })),
     });
 
-    // Tell EVERYONE ELSE this user joined
-    socket.broadcast.emit('user-joined', { username, color });
-    // Update the user list for everyone
+    socket.broadcast.emit('user-joined', {
+      username: account.username,
+      displayName: account.displayName,
+      color: account.color,
+    });
     io.emit('online-users', getOnlineUsers());
 
-    // System message in public chat
+    // System message — uses display name so people see who joined
     const sysMsg = {
       id: uuidv4(),
       type: 'system',
-      text: `${username} has entered the chat`,
+      text: `${account.displayName} has entered the chat`,
       timestamp: Date.now(),
     };
-    publicMessages.push(sysMsg);
     io.to('public').emit('public-message', sysMsg);
   });
 
   // ----------------------------------------------------------
-  // PUBLIC MESSAGES — sent to the main lobby
+  // PUBLIC MESSAGES
   // ----------------------------------------------------------
   socket.on('public-message', (data) => {
-    const user = users.get(socket.id);
-    if (!user) return; // ignore messages from unregistered sockets
+    const user = onlineSockets.get(socket.id);
+    if (!user) return;
 
     const msg = {
       id: uuidv4(),
       type: 'message',
       username: user.username,
+      displayName: user.displayName,
       color: user.color,
       text: data.text || '',
-      file: data.file || null, // file metadata if they attached one
+      file: data.file || null,
       timestamp: Date.now(),
     };
 
-    publicMessages.push(msg);
-    // Cap stored messages at 500 to avoid memory bloat
-    if (publicMessages.length > 500) publicMessages.shift();
-
-    // Broadcast to everyone in the public room
+    // We still broadcast to everyone, just don't store history
     io.to('public').emit('public-message', msg);
   });
 
   // ----------------------------------------------------------
-  // DIRECT MESSAGES — private 1-on-1 conversations
+  // DIRECT MESSAGES
   // ----------------------------------------------------------
   socket.on('dm', (data) => {
-    const sender = users.get(socket.id);
+    const sender = onlineSockets.get(socket.id);
     if (!sender) return;
 
-    // Find the recipient's socket by their username
-    const recipientEntry = Array.from(users.entries()).find(
+    // Find recipient by username (not display name)
+    const recipientEntry = Array.from(onlineSockets.entries()).find(
       ([, u]) => u.username === data.to
     );
     if (!recipientEntry) {
@@ -237,59 +395,44 @@ io.on('connection', (socket) => {
     }
 
     const [recipientSocketId, recipient] = recipientEntry;
-    const dmKey = getDmKey(sender.username, recipient.username);
-
-    // Create the conversation if it doesn't exist yet
-    if (!dmConversations.has(dmKey)) {
-      dmConversations.set(dmKey, { messages: [] });
-    }
 
     const msg = {
       id: uuidv4(),
       type: 'dm',
       from: sender.username,
+      fromDisplay: sender.displayName,
       fromColor: sender.color,
       to: recipient.username,
+      toDisplay: recipient.displayName,
       text: data.text || '',
       file: data.file || null,
       timestamp: Date.now(),
     };
 
-    const convo = dmConversations.get(dmKey);
-    convo.messages.push(msg);
-    if (convo.messages.length > 200) convo.messages.shift();
-
-    // Send to both sender and recipient
+    // DMs also not persisted — only live delivery
     socket.emit('dm', msg);
     io.to(recipientSocketId).emit('dm', msg);
   });
 
-  // Request DM history with a specific user
+  // DM history — returns empty since we don't store anymore
   socket.on('dm-history', (targetUsername) => {
-    const user = users.get(socket.id);
-    if (!user) return;
-
-    const dmKey = getDmKey(user.username, targetUsername);
-    const convo = dmConversations.get(dmKey);
     socket.emit('dm-history', {
       with: targetUsername,
-      messages: convo ? convo.messages.slice(-100) : [],
+      messages: [],
     });
   });
 
   // ----------------------------------------------------------
-  // PRIVATE ROOMS — create, join, leave, message
+  // ROOMS
   // ----------------------------------------------------------
-
-  // Create a new room
   socket.on('create-room', (roomName) => {
-    const user = users.get(socket.id);
+    const user = onlineSockets.get(socket.id);
     if (!user) return;
 
     roomName = roomName.trim().substring(0, 32);
     if (!roomName) return;
 
-    const roomId = uuidv4().substring(0, 8); // short ID for convenience
+    const roomId = uuidv4().substring(0, 8);
     rooms.set(roomId, {
       name: roomName,
       creator: user.username,
@@ -297,23 +440,16 @@ io.on('connection', (socket) => {
       messages: [],
     });
 
-    // Socket.IO "rooms" are separate from our data model rooms,
-    // but we use the same ID to keep things simple. socket.join()
-    // subscribes this socket to receive broadcasts for that room.
     socket.join(roomId);
-
-    // Tell the creator the room was made
     socket.emit('room-created', { id: roomId, name: roomName });
 
-    // Tell everyone about the new room
     io.emit('rooms-list', Array.from(rooms.entries()).map(([id, r]) => ({
       id, name: r.name, memberCount: r.members.size,
     })));
   });
 
-  // Join an existing room
   socket.on('join-room', (roomId) => {
-    const user = users.get(socket.id);
+    const user = onlineSockets.get(socket.id);
     if (!user) return;
 
     const room = rooms.get(roomId);
@@ -325,33 +461,29 @@ io.on('connection', (socket) => {
     room.members.add(user.username);
     socket.join(roomId);
 
-    // Send room history to the joining user
+    // Send empty history — only see new messages
     socket.emit('room-joined', {
       id: roomId,
       name: room.name,
-      messages: room.messages.slice(-100),
+      messages: [],
       members: Array.from(room.members),
     });
 
-    // Notify room members
     const sysMsg = {
       id: uuidv4(),
       type: 'system',
-      text: `${user.username} joined the room`,
+      text: `${user.displayName} joined the room`,
       timestamp: Date.now(),
     };
-    room.messages.push(sysMsg);
     io.to(roomId).emit('room-message', { roomId, message: sysMsg });
 
-    // Update room list for everyone
     io.emit('rooms-list', Array.from(rooms.entries()).map(([id, r]) => ({
       id, name: r.name, memberCount: r.members.size,
     })));
   });
 
-  // Send a message to a room
   socket.on('room-message', (data) => {
-    const user = users.get(socket.id);
+    const user = onlineSockets.get(socket.id);
     if (!user) return;
 
     const room = rooms.get(data.roomId);
@@ -361,21 +493,18 @@ io.on('connection', (socket) => {
       id: uuidv4(),
       type: 'message',
       username: user.username,
+      displayName: user.displayName,
       color: user.color,
       text: data.text || '',
       file: data.file || null,
       timestamp: Date.now(),
     };
 
-    room.messages.push(msg);
-    if (room.messages.length > 500) room.messages.shift();
-
     io.to(data.roomId).emit('room-message', { roomId: data.roomId, message: msg });
   });
 
-  // Leave a room
   socket.on('leave-room', (roomId) => {
-    const user = users.get(socket.id);
+    const user = onlineSockets.get(socket.id);
     if (!user) return;
 
     const room = rooms.get(roomId);
@@ -384,17 +513,15 @@ io.on('connection', (socket) => {
     room.members.delete(user.username);
     socket.leave(roomId);
 
-    // If room is empty, delete it
     if (room.members.size === 0) {
       rooms.delete(roomId);
     } else {
       const sysMsg = {
         id: uuidv4(),
         type: 'system',
-        text: `${user.username} left the room`,
+        text: `${user.displayName} left the room`,
         timestamp: Date.now(),
       };
-      room.messages.push(sysMsg);
       io.to(roomId).emit('room-message', { roomId, message: sysMsg });
     }
 
@@ -404,60 +531,45 @@ io.on('connection', (socket) => {
   });
 
   // ----------------------------------------------------------
-  // TYPING INDICATORS
+  // TYPING
   // ----------------------------------------------------------
   socket.on('typing', (data) => {
-    const user = users.get(socket.id);
+    const user = onlineSockets.get(socket.id);
     if (!user) return;
 
     if (data.room === 'public') {
-      socket.broadcast.to('public').emit('typing', {
-        username: user.username, room: 'public'
-      });
+      socket.broadcast.to('public').emit('typing', { displayName: user.displayName, room: 'public' });
     } else if (data.room) {
-      socket.broadcast.to(data.room).emit('typing', {
-        username: user.username, room: data.room
-      });
+      socket.broadcast.to(data.room).emit('typing', { displayName: user.displayName, room: data.room });
     } else if (data.to) {
-      // DM typing indicator — find recipient socket
-      const recipientEntry = Array.from(users.entries()).find(
-        ([, u]) => u.username === data.to
-      );
+      const recipientEntry = Array.from(onlineSockets.entries()).find(([, u]) => u.username === data.to);
       if (recipientEntry) {
-        io.to(recipientEntry[0]).emit('typing', {
-          username: user.username, dm: true
-        });
+        io.to(recipientEntry[0]).emit('typing', { displayName: user.displayName, dm: true });
       }
     }
   });
 
   // ----------------------------------------------------------
-  // DISCONNECT — clean up when a user leaves
+  // DISCONNECT
   // ----------------------------------------------------------
   socket.on('disconnect', () => {
-    const user = users.get(socket.id);
+    const user = onlineSockets.get(socket.id);
     if (user) {
-      console.log(`[-] ${user.username} disconnected`);
+      console.log(`[-] ${user.displayName} (${user.username}) disconnected`);
 
-      // Remove from all rooms
       rooms.forEach((room, roomId) => {
         room.members.delete(user.username);
-        if (room.members.size === 0) {
-          rooms.delete(roomId);
-        }
+        if (room.members.size === 0) rooms.delete(roomId);
       });
 
-      // Remove from users map
-      users.delete(socket.id);
+      onlineSockets.delete(socket.id);
 
-      // Notify everyone
       const sysMsg = {
         id: uuidv4(),
         type: 'system',
-        text: `${user.username} has left the chat`,
+        text: `${user.displayName} has left the chat`,
         timestamp: Date.now(),
       };
-      publicMessages.push(sysMsg);
       io.to('public').emit('public-message', sysMsg);
       io.emit('online-users', getOnlineUsers());
       io.emit('rooms-list', Array.from(rooms.entries()).map(([id, r]) => ({
@@ -468,12 +580,9 @@ io.on('connection', (socket) => {
 });
 
 // ============================================================
-// START SERVER
+// START
 // ============================================================
-// Railway sets the PORT env variable automatically.
-// Locally, defaults to 3000.
-
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`JorgeChat running on port ${PORT}`);
+  console.log(`JorgeChat v2 running on port ${PORT}`);
 });
