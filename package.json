@@ -1,7 +1,7 @@
 {
   "name": "jorgechat",
-  "version": "3.0.0",
-  "description": "JorgeChat — retro LAN chat for jorgepompacarrera.net",
+  "version": "4.0.0",
+  "description": "JorgeChat — full-featured retro chat",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
@@ -12,6 +12,7 @@
     "multer": "^1.4.5-lts.1",
     "uuid": "^9.0.0",
     "mime-types": "^2.1.35",
-    "bcryptjs": "^2.4.3"
+    "bcryptjs": "^2.4.3",
+    "pg": "^8.12.0"
   }
 }

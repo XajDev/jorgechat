@@ -45,6 +45,21 @@
     .cpick.sel{border:2px solid #000}
     .stab{display:inline-block;padding:3px 10px;cursor:pointer;border:1px solid #d4d0c8;margin-right:2px;font-size:11px}
     .stab:hover{background:#d4d0c8}.stab.on{background:#fff;border-bottom:1px solid #fff;font-weight:bold}
+    .msg-row{padding:1px 0;position:relative}
+    .msg-row:hover{background:#f0f0f0}
+    .msg-row:hover .msg-acts{display:inline}
+    .msg-acts{display:none;margin-left:6px;font-size:9px}
+    .msg-acts span{cursor:pointer;padding:0 3px;border:1px solid #d4d0c8;background:#ece9d8;margin-right:1px}
+    .msg-acts span:hover{background:#d4d0c8}
+    .msg-edited{color:gray;font-size:9px;font-style:italic}
+    .msg-reactions{margin:1px 0 1px 20px;font-size:10px}
+    .msg-reactions span{display:inline-block;border:1px solid #d4d0c8;background:#ece9d8;padding:0 4px;margin-right:2px;cursor:pointer}
+    .msg-reactions span:hover{background:#d4d0c8}
+    .msg-reactions span.my-react{border-color:#0a246a;background:#c0d0e8}
+    .react-picker{position:absolute;background:#ece9d8;border:2px outset #d4d0c8;padding:4px;z-index:50;font-size:14px}
+    .react-picker span{cursor:pointer;padding:2px;display:inline-block}
+    .react-picker span:hover{background:#d4d0c8}
+    .edit-box{border:2px inset #d4d0c8;background:#fff;padding:2px 4px;font-family:Tahoma,Verdana,sans-serif;font-size:11px;width:300px}
   </style>
 </head>
 <body>
@@ -53,40 +68,36 @@
 <!-- AUTH -->
 <div id="auth">
 <table width="100%" height="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" valign="middle">
-<table cellpadding="0" cellspacing="0" border="0" width="380">
-<tr><td align="center" style="padding-bottom:16px">
-  <b style="font-size:18px;color:#fff">JorgeChat</b><br>
-  <span style="font-size:10px;color:#c0c0c0">jorgepompacarrera.net</span>
+<table cellpadding="0" cellspacing="0" border="0" width="380" class="R">
+<tr><td class="T" style="font-size:13px;padding:6px 8px">
+  JorgeChat
+  <span style="font-weight:normal;font-size:10px;margin-left:8px">jorgepompacarrera.net</span>
 </td></tr>
-<tr><td style="padding-left:4px">
+<tr><td style="background:#ece9d8;padding:12px 20px 4px 20px">
   <span class="tb on" id="t-li" onclick="swT('li')">Sign In</span>
   <span class="tb" id="t-re" onclick="swT('re')">Register</span>
 </td></tr>
-<tr><td>
+<tr><td style="background:#ece9d8;padding:0">
   <!-- Login -->
-  <div id="f-li" class="R">
-    <div class="T">Sign In</div>
-    <div style="padding:20px;background:#ece9d8">
-      <table cellspacing="4"><tr><td align="right">Username:</td><td><input class="I" id="li-u" style="width:200px" maxlength="24"></td></tr>
-      <tr><td align="right">Password:</td><td><input type="password" class="I" id="li-p" style="width:200px" maxlength="64"></td></tr>
-      <tr><td></td><td style="padding-top:8px"><input type="button" class="B" id="li-b" value="Sign In >>"></td></tr>
-      <tr><td></td><td><div id="li-e" style="color:#f00;font-size:10px;min-height:14px"></div></td></tr></table>
-    </div>
+  <div id="f-li" style="padding:16px 20px 20px 20px">
+    <table cellspacing="4"><tr><td align="right">Username:</td><td><input class="I" id="li-u" style="width:200px" maxlength="24"></td></tr>
+    <tr><td align="right">Password:</td><td><input type="password" class="I" id="li-p" style="width:200px" maxlength="64"></td></tr>
+    <tr><td></td><td style="padding-top:8px"><input type="button" class="B" id="li-b" value="Sign In >>"></td></tr>
+    <tr><td></td><td><div id="li-e" style="color:#f00;font-size:10px;min-height:14px"></div></td></tr></table>
   </div>
   <!-- Register -->
-  <div id="f-re" class="R" style="display:none">
-    <div class="T">Create Account</div>
-    <div style="padding:20px;background:#ece9d8">
-      <table cellspacing="4"><tr><td align="right">Username:</td><td><input class="I" id="re-u" style="width:200px" maxlength="24"></td></tr>
-      <tr><td align="right">Display Name:</td><td><input class="I" id="re-d" style="width:200px" maxlength="24"></td></tr>
-      <tr><td align="right">Password:</td><td><input type="password" class="I" id="re-p" style="width:200px" maxlength="64"></td></tr>
-      <tr><td></td><td style="padding-top:8px"><input type="button" class="B" id="re-b" value="Create Account >>"></td></tr>
-      <tr><td></td><td><div id="re-e" style="color:#f00;font-size:10px;min-height:14px"></div></td></tr>
-      <tr><td></td><td style="font-size:9px;color:gray">letters, numbers, underscores for username</td></tr></table>
-    </div>
+  <div id="f-re" style="display:none;padding:16px 20px 20px 20px">
+    <table cellspacing="4"><tr><td align="right">Username:</td><td><input class="I" id="re-u" style="width:200px" maxlength="24"></td></tr>
+    <tr><td align="right">Display Name:</td><td><input class="I" id="re-d" style="width:200px" maxlength="24"></td></tr>
+    <tr><td align="right">Password:</td><td><input type="password" class="I" id="re-p" style="width:200px" maxlength="64"></td></tr>
+    <tr><td></td><td style="padding-top:8px"><input type="button" class="B" id="re-b" value="Create Account >>"></td></tr>
+    <tr><td></td><td><div id="re-e" style="color:#f00;font-size:10px;min-height:14px"></div></td></tr>
+    <tr><td></td><td style="font-size:9px;color:gray">letters, numbers, underscores for username</td></tr></table>
   </div>
 </td></tr>
-<tr><td align="center" style="padding-top:8px"><span style="font-size:9px;color:#c0c0c0">v3.0</span></td></tr>
+<tr><td align="center" style="background:#ece9d8;padding:4px;border-top:1px groove #d4d0c8">
+  <span style="font-size:9px;color:gray">v3.0</span>
+</td></tr>
 </table>
 </td></tr></table>
 </div>
@@ -294,6 +305,8 @@ function swT(t){
   $('f-re').style.display=t==='re'?'':'none';
   $('t-li').className='tb'+(t==='li'?' on':'');
   $('t-re').className='tb'+(t==='re'?' on':'');
+  if(t==='li')try{$('li-u').focus();}catch(e){}
+  if(t==='re')try{$('re-u').focus();}catch(e){}
 }
 
 // Auto-login
@@ -398,7 +411,26 @@ function setupSk(){
   });
   sk.on('user-updated',function(d){
     // Refresh online list on user updates
-    // We don't have the full list so just note it
+  });
+  sk.on('message-edited',function(d){
+    var bodyEl=document.getElementById('mb-'+d.messageId);
+    if(bodyEl){bodyEl.innerHTML=esc(d.text);
+      // Add edited indicator if not already there
+      var row=bodyEl.closest('.msg-row');
+      if(row&&!row.querySelector('.msg-edited')){
+        var ed=document.createElement('span');ed.className='msg-edited';ed.innerHTML=' (edited)';
+        bodyEl.parentNode.insertBefore(ed,bodyEl.nextSibling);
+      }
+    }
+  });
+  sk.on('message-deleted',function(d){
+    var row=document.querySelector('[data-mid="'+d.messageId+'"]');
+    if(row){row.style.color='gray';row.style.fontStyle='italic';row.innerHTML='<span style="font-size:10px;color:gray">[message deleted]</span>';row.className='msg-row'}
+  });
+  sk.on('message-reacted',function(d){updateReactions(d.messageId,d.reactions)});
+  sk.on('kicked-from-room',function(d){
+    if(curCh==='room:'+d.roomId){swCh('public')}
+    notify('You were '+(d.ban?'banned':'kicked')+' from a room');
   });
   sk.on('disconnect',function(){$('st-i').style.color='#f00';$('st-l').innerHTML='Disconnected';$('sbt').innerHTML='Reconnecting...';});
   sk.on('connect',function(){$('st-i').style.color='#0c0';$('st-l').innerHTML='Connected';$('sbt').innerHTML='Connected';});
@@ -406,7 +438,7 @@ function setupSk(){
 
 // Render message
 function rMsg(m){
-  var d=document.createElement('div');d.style.padding='1px 0';
+  var d=document.createElement('div');d.className='msg-row';d.setAttribute('data-mid',m.id);
   if(m.type==='system'){
     d.style.color='gray';d.style.fontStyle='italic';d.style.fontSize='10px';
     d.innerHTML='<span style="color:gray;font-size:10px">['+fmtT(m.timestamp)+']</span> *** '+esc(m.text)+' ***';
@@ -415,11 +447,103 @@ function rMsg(m){
     var un=m.username||m.from;
     var col=m.color||m.fromColor||'#000';
     var fh=m.file?rFP(m.file):'';
+    var edited=m.edited?' <span class="msg-edited">(edited)</span>':'';
+    // Action buttons — only show edit/delete on own messages
+    var acts='<span class="msg-acts">';
+    acts+='<span onclick="showReactPick(\''+escA(m.id)+'\',this)" title="React">+</span>';
+    if(un===myU){
+      acts+='<span onclick="editMsg(\''+escA(m.id)+'\')" title="Edit">edit</span>';
+      acts+='<span onclick="delMsg(\''+escA(m.id)+'\')" title="Delete">del</span>';
+    }
+    acts+='</span>';
     d.innerHTML='<span style="color:gray;font-size:10px">['+fmtT(m.timestamp)+']</span> '+
       '<span style="color:'+col+';font-weight:bold;cursor:pointer" onclick="viewProf(\''+escA(un)+'\')">&lt;'+esc(dn)+'&gt;</span> '+
-      '<span style="font-size:11px">'+esc(m.text||'')+'</span>'+fh;
+      '<span class="msg-body" id="mb-'+m.id+'">'+esc(m.text||'')+'</span>'+edited+acts+fh;
+    // Reactions
+    var rDiv=renderReactions(m.id,m.reactions||{});
+    if(rDiv)d.appendChild(rDiv);
   }
   $('msgs').appendChild(d);
+}
+
+function renderReactions(msgId,reactions){
+  var keys=Object.keys(reactions);if(keys.length===0)return null;
+  var div=document.createElement('div');div.className='msg-reactions';div.id='rx-'+msgId;
+  for(var i=0;i<keys.length;i++){
+    var emoji=keys[i];var users=reactions[emoji];if(!users||users.length===0)continue;
+    var s=document.createElement('span');
+    s.className=users.indexOf(myU)>=0?'my-react':'';
+    s.innerHTML=emoji+' '+users.length;
+    s.title=users.join(', ');
+    s.setAttribute('data-emoji',emoji);
+    s.setAttribute('data-mid',msgId);
+    s.onclick=function(){sk.emit('react',{messageId:this.getAttribute('data-mid'),emoji:this.getAttribute('data-emoji')})};
+    div.appendChild(s);
+  }
+  return div;
+}
+
+function updateReactions(msgId,reactions){
+  var old=document.getElementById('rx-'+msgId);
+  if(old)old.parentNode.removeChild(old);
+  var row=document.querySelector('[data-mid="'+msgId+'"]');
+  if(!row)return;
+  var rDiv=renderReactions(msgId,reactions);
+  if(rDiv)row.appendChild(rDiv);
+}
+
+// Reaction picker — simple emoji grid
+var REACT_EMOJIS=[':)',':D',':(',':|','>:(','<3','lol','ok','!','?','gg','rip','F','W','L','+1','-1','100'];
+function showReactPick(msgId,el){
+  // Remove any existing picker
+  var old=document.getElementById('react-pick');if(old)old.parentNode.removeChild(old);
+  var picker=document.createElement('div');picker.className='react-picker';picker.id='react-pick';
+  for(var i=0;i<REACT_EMOJIS.length;i++){
+    var s=document.createElement('span');s.innerHTML=esc(REACT_EMOJIS[i]);
+    s.setAttribute('data-e',REACT_EMOJIS[i]);
+    s.onclick=(function(mid){return function(){
+      sk.emit('react',{messageId:mid,emoji:this.getAttribute('data-e')});
+      var p=document.getElementById('react-pick');if(p)p.parentNode.removeChild(p);
+    }})(msgId);
+    picker.appendChild(s);
+  }
+  // Position near the button
+  var row=el.closest('.msg-row');
+  if(row)row.appendChild(picker);
+  // Close picker on outside click
+  setTimeout(function(){document.addEventListener('click',closeReactPick,{once:true})},10);
+}
+function closeReactPick(){var p=document.getElementById('react-pick');if(p)p.parentNode.removeChild(p)}
+
+// Edit message
+function editMsg(msgId){
+  var bodyEl=document.getElementById('mb-'+msgId);
+  if(!bodyEl)return;
+  var currentText=bodyEl.textContent;
+  // Replace text with an input
+  var row=bodyEl.parentNode;
+  var input=document.createElement('input');input.type='text';input.className='edit-box';input.value=currentText;
+  var saveBtn=document.createElement('span');saveBtn.innerHTML=' <input type="button" class="B Bs" value="Save"> <input type="button" class="B Bs" value="Cancel">';
+  bodyEl.style.display='none';
+  row.insertBefore(input,bodyEl.nextSibling);
+  row.insertBefore(saveBtn,input.nextSibling);
+  input.focus();input.select();
+  var btns=saveBtn.getElementsByTagName('input');
+  btns[0].onclick=function(){
+    var newText=input.value.replace(/^\s+|\s+$/g,'');
+    if(newText&&newText!==currentText){
+      sk.emit('edit-message',{messageId:msgId,text:newText});
+    }
+    bodyEl.style.display='';row.removeChild(input);row.removeChild(saveBtn);
+  };
+  btns[1].onclick=function(){bodyEl.style.display='';row.removeChild(input);row.removeChild(saveBtn)};
+  input.onkeydown=function(e){if(e.keyCode===13)btns[0].onclick();if(e.keyCode===27)btns[1].onclick()};
+}
+
+// Delete message
+function delMsg(msgId){
+  if(!confirm('Delete this message?'))return;
+  sk.emit('delete-message',{messageId:msgId});
 }
 function rFP(f){
   if(!f)return'';var h='<div class="fp" style="margin:2px 0 2px 20px">';

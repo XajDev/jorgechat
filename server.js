@@ -1,832 +1,112 @@
-// ============================================================
-// JorgeChat Server v3 — jorgepompacarrera.net
-// ============================================================
+const express=require('express'),http=require('http'),{Server}=require('socket.io'),multer=require('multer'),path=require('path'),fs=require('fs'),{v4:uuidv4}=require('uuid'),mime=require('mime-types'),bcrypt=require('bcryptjs'),{query,queryOne,initDB}=require('./db');
+const app=express(),server=http.createServer(app),io=new Server(server,{cors:{origin:'*'},transports:['websocket','polling'],maxHttpBufferSize:1e8});
+const COLORS=['#CC0000','#0000CC','#009900','#CC6600','#9900CC','#006666','#CC0066','#336699','#669933','#993366','#666600','#006633','#330066','#663300','#003366','#990000','#000099','#009966','#996600','#660099'];
+const uploadDir=path.join(__dirname,'uploads');if(!fs.existsSync(uploadDir))fs.mkdirSync(uploadDir,{recursive:true});
+const pfpDir=path.join(uploadDir,'pfp');if(!fs.existsSync(pfpDir))fs.mkdirSync(pfpDir,{recursive:true});
+const storage=multer.diskStorage({destination:(r,f,cb)=>cb(null,uploadDir),filename:(r,f,cb)=>cb(null,uuidv4()+'-'+f.originalname)});
+const upload=multer({storage,limits:{fileSize:50*1024*1024}});
+const pfpStorage=multer.diskStorage({destination:(r,f,cb)=>cb(null,pfpDir),filename:(r,f,cb)=>cb(null,'temp_'+uuidv4()+path.extname(f.originalname))});
+const pfpUpload=multer({storage:pfpStorage,limits:{fileSize:5*1024*1024},fileFilter:(r,f,cb)=>f.mimetype.startsWith('image/')?cb(null,true):cb(new Error('Images only'))});
 
-const express = require('express');
-const http = require('http');
-const { Server } = require('socket.io');
-const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
-const { v4: uuidv4 } = require('uuid');
-const mime = require('mime-types');
-const bcrypt = require('bcryptjs');
+function getDmKey(u1,u2){return[u1,u2].sort().join('::')}
+async function findByToken(t){if(!t)return null;return queryOne('SELECT * FROM accounts WHERE token=$1',[t])}
+const onlineSockets=new Map();
+function getOnlineUsers(){const s=new Set(),r=[];onlineSockets.forEach(u=>{if(!s.has(u.username)){s.add(u.username);r.push({username:u.username,displayName:u.display_name,color:u.color,tags:u.tags||[]})}});return r}
+function isUserOnline(un){for(const u of onlineSockets.values())if(u.username===un)return true;return false}
+function emitToUser(un,ev,d){onlineSockets.forEach((u,sid)=>{if(u.username===un){const s=io.sockets.sockets.get(sid);if(s)s.emit(ev,d)}})}
+function fmtMsg(m){return{id:m.id,type:m.type,username:m.username,displayName:m.display_name,color:m.color,text:m.text,file:m.file_data,edited:m.edited,reactions:m.reactions||{},timestamp:parseInt(m.timestamp),from:m.username,fromDisplay:m.display_name,fromColor:m.color}}
 
-const app = express();
-const server = http.createServer(app);
-const io = new Server(server, {
-  cors: { origin: '*' },
-  transports: ['websocket', 'polling'],
-  maxHttpBufferSize: 1e8,
-});
-
-// ============================================================
-// DATA PERSISTENCE — JSON files in /data
-// ============================================================
-const DATA_DIR = path.join(__dirname, 'data');
-if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR);
-
-function loadJSON(filename, fallback) {
-  const filepath = path.join(DATA_DIR, filename);
-  if (fs.existsSync(filepath)) {
-    try { return JSON.parse(fs.readFileSync(filepath, 'utf-8')); }
-    catch (e) { console.error('Load fail ' + filename, e.message); }
-  }
-  return fallback;
+async function getUserRooms(username){
+  const rows=await query(`SELECT r.*,(SELECT COUNT(*) FROM room_members rm2 WHERE rm2.room_id=r.id) as mc,
+    EXISTS(SELECT 1 FROM room_members rm3 WHERE rm3.room_id=r.id AND rm3.username=$1) as is_member
+    FROM rooms r WHERE r.private=false OR r.creator=$1 OR EXISTS(SELECT 1 FROM room_members rm WHERE rm.room_id=r.id AND rm.username=$1) OR EXISTS(SELECT 1 FROM room_invites ri WHERE ri.room_id=r.id AND ri.username=$1)`,[username]);
+  return rows.map(r=>({id:r.id,name:r.name,private:r.private,memberCount:parseInt(r.mc),isMember:r.is_member,description:r.description||''}));
 }
-function saveJSON(filename, data) {
-  try { fs.writeFileSync(path.join(DATA_DIR, filename), JSON.stringify(data, null, 2)); }
-  catch (e) { console.error('Save fail ' + filename, e.message); }
+async function broadcastRoomLists(){
+  for(const[sid,u]of onlineSockets){const s=io.sockets.sockets.get(sid);if(s){const rooms=await getUserRooms(u.username);s.emit('rooms-list',rooms)}}
 }
 
-// All persistent stores
-let accounts = loadJSON('accounts.json', {});
-let dmStore = loadJSON('dms.json', {});       // "user1::user2" -> [messages]
-let roomStore = loadJSON('rooms.json', {});   // roomId -> {name,creator,private,members:[],messages:[],invited:[]}
-let friendStore = loadJSON('friends.json', {}); // username -> [friend usernames]
-let friendRequests = loadJSON('friend_requests.json', {}); // username -> [{from,timestamp}]
+app.use(express.json());app.use(express.static(path.join(__dirname,'public')));app.use('/uploads',express.static(uploadDir));
 
-function saveAccounts() { saveJSON('accounts.json', accounts); }
-function saveDMs() { saveJSON('dms.json', dmStore); }
-function saveRooms() { saveJSON('rooms.json', roomStore); }
-function saveFriends() { saveJSON('friends.json', friendStore); }
-function saveFriendRequests() { saveJSON('friend_requests.json', friendRequests); }
-
-function findByToken(token) {
-  if (!token) return null;
-  const vals = Object.values(accounts);
-  for (let i = 0; i < vals.length; i++) {
-    if (vals[i].token === token) return vals[i];
-  }
-  return null;
-}
-
-function getDmKey(u1, u2) { return [u1, u2].sort().join('::'); }
-
-const USER_COLORS = [
-  '#CC0000','#0000CC','#009900','#CC6600','#9900CC',
-  '#006666','#CC0066','#336699','#669933','#993366',
-  '#666600','#006633','#330066','#663300','#003366',
-  '#990000','#000099','#009966','#996600','#660099',
-];
-
-// ============================================================
-// FILE UPLOADS
-// ============================================================
-const uploadDir = path.join(__dirname, 'uploads');
-if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
-const pfpDir = path.join(uploadDir, 'pfp');
-if (!fs.existsSync(pfpDir)) fs.mkdirSync(pfpDir);
-
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, uploadDir),
-  filename: (req, file, cb) => cb(null, uuidv4() + '-' + file.originalname),
+app.post('/upload',upload.single('file'),(req,res)=>{
+  if(!req.file)return res.status(400).json({error:'No file'});
+  const mt=mime.lookup(req.file.originalname)||'application/octet-stream';let ft='file';
+  if(mt.startsWith('image/'))ft='image';if(mt.startsWith('video/'))ft='video';if(mt.startsWith('audio/'))ft='audio';
+  res.json({filename:req.file.filename,originalName:req.file.originalname,url:'/uploads/'+req.file.filename,size:req.file.size,mimeType:mt,fileType:ft});
 });
-const upload = multer({ storage, limits: { fileSize: 50 * 1024 * 1024 } });
-
-const pfpStorage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, pfpDir),
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname) || '.png';
-    // We'll rename after auth check
-    cb(null, 'temp_' + uuidv4() + ext);
-  },
+app.post('/api/upload-pfp',pfpUpload.single('pfp'),async(req,res)=>{
+  if(!req.file)return res.status(400).json({error:'No file'});const acc=await findByToken(req.body.token);
+  if(!acc){fs.unlinkSync(req.file.path);return res.status(401).json({error:'Invalid token'})}
+  if(acc.pfp){const old=path.join(pfpDir,path.basename(acc.pfp));if(fs.existsSync(old))fs.unlinkSync(old)}
+  const ext=path.extname(req.file.originalname)||'.png',nn=acc.username+'_'+Date.now()+ext;
+  fs.renameSync(req.file.path,path.join(pfpDir,nn));const pfpUrl='/uploads/pfp/'+nn;
+  await query('UPDATE accounts SET pfp=$1 WHERE username=$2',[pfpUrl,acc.username]);res.json({pfp:pfpUrl});
 });
-const pfpUpload = multer({
-  storage: pfpStorage,
-  limits: { fileSize: 5 * 1024 * 1024 },
-  fileFilter: (req, file, cb) => {
-    if (file.mimetype.startsWith('image/')) cb(null, true);
-    else cb(new Error('Images only'));
-  },
+app.post('/api/register',async(req,res)=>{
+  const{username,displayName,password}=req.body;if(!username||!password||!displayName)return res.status(400).json({error:'All fields required'});
+  const c=username.trim().toLowerCase();if(c.length<3||c.length>24)return res.status(400).json({error:'Username: 3-24 chars'});
+  if(!/^[a-z0-9_]+$/.test(c))return res.status(400).json({error:'Username: letters, numbers, _ only'});
+  const cd=displayName.trim().substring(0,24);if(!cd)return res.status(400).json({error:'Display name required'});
+  if(password.length<3)return res.status(400).json({error:'Password: 3+ chars'});
+  if(await queryOne('SELECT username FROM accounts WHERE username=$1',[c]))return res.status(400).json({error:'Username taken'});
+  const h=await bcrypt.hash(password,10),tk=uuidv4(),cnt=await query('SELECT COUNT(*) as n FROM accounts',[]),col=COLORS[parseInt(cnt[0].n)%COLORS.length];
+  await query('INSERT INTO accounts (username,display_name,password_hash,color,token,created_at) VALUES ($1,$2,$3,$4,$5,$6)',[c,cd,h,col,tk,Date.now()]);
+  res.json({username:c,displayName:cd,color:col,token:tk});
 });
-
-// ============================================================
-// EXPRESS ROUTES
-// ============================================================
-app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
-app.use('/uploads', express.static(uploadDir));
-
-// --- File upload ---
-app.post('/upload', upload.single('file'), (req, res) => {
-  if (!req.file) return res.status(400).json({ error: 'No file' });
-  const mimeType = mime.lookup(req.file.originalname) || 'application/octet-stream';
-  let fileType = 'file';
-  if (mimeType.startsWith('image/')) fileType = 'image';
-  if (mimeType.startsWith('video/')) fileType = 'video';
-  if (mimeType.startsWith('audio/')) fileType = 'audio';
-  res.json({
-    filename: req.file.filename,
-    originalName: req.file.originalname,
-    url: '/uploads/' + req.file.filename,
-    size: req.file.size, mimeType, fileType,
-  });
+app.post('/api/login',async(req,res)=>{
+  const{username,password}=req.body;if(!username||!password)return res.status(400).json({error:'Both fields required'});
+  const acc=await queryOne('SELECT * FROM accounts WHERE username=$1',[username.trim().toLowerCase()]);
+  if(!acc||!await bcrypt.compare(password,acc.password_hash))return res.status(401).json({error:'Invalid username or password'});
+  const tk=uuidv4();await query('UPDATE accounts SET token=$1 WHERE username=$2',[tk,acc.username]);
+  res.json({username:acc.username,displayName:acc.display_name,color:acc.color,token:tk,bio:acc.bio,pfp:acc.pfp,tags:acc.tags});
 });
+app.post('/api/auth',async(req,res)=>{const acc=await findByToken(req.body.token);if(!acc)return res.status(401).json({error:'Invalid token'});res.json({username:acc.username,displayName:acc.display_name,color:acc.color,token:acc.token,bio:acc.bio,pfp:acc.pfp,tags:acc.tags})});
+app.post('/api/update-display',async(req,res)=>{const acc=await findByToken(req.body.token);if(!acc)return res.status(401).json({error:'Invalid token'});const cd=(req.body.displayName||'').trim().substring(0,24);if(!cd)return res.status(400).json({error:'Required'});const now=Date.now(),cool=30*60*1000;if(acc.last_display_change&&(now-acc.last_display_change)<cool)return res.status(400).json({error:'Wait '+Math.ceil((cool-(now-acc.last_display_change))/60000)+' min'});await query('UPDATE accounts SET display_name=$1,last_display_change=$2 WHERE username=$3',[cd,now,acc.username]);io.emit('user-updated',{username:acc.username,displayName:cd});res.json({displayName:cd})});
+app.post('/api/update-bio',async(req,res)=>{const acc=await findByToken(req.body.token);if(!acc)return res.status(401).json({error:'Invalid token'});const bio=(req.body.bio||'').substring(0,500);await query('UPDATE accounts SET bio=$1 WHERE username=$2',[bio,acc.username]);res.json({bio})});
+app.post('/api/update-tags',async(req,res)=>{const acc=await findByToken(req.body.token);if(!acc)return res.status(401).json({error:'Invalid token'});const tags=(req.body.tags||[]).filter(t=>['unavailable','busy','away','dnd'].includes(t));await query('UPDATE accounts SET tags=$1 WHERE username=$2',[tags,acc.username]);io.emit('user-updated',{username:acc.username,tags});res.json({tags})});
+app.post('/api/update-color',async(req,res)=>{const acc=await findByToken(req.body.token);if(!acc)return res.status(401).json({error:'Invalid token'});const col=(req.body.color||'').trim();if(!/^#[0-9a-fA-F]{6}$/.test(col))return res.status(400).json({error:'Invalid color'});await query('UPDATE accounts SET color=$1 WHERE username=$2',[col,acc.username]);io.emit('user-updated',{username:acc.username,color:col});res.json({color:col})});
+app.get('/api/profile/:username',async(req,res)=>{const acc=await queryOne('SELECT username,display_name,color,bio,pfp,tags,created_at,last_seen FROM accounts WHERE username=$1',[req.params.username]);if(!acc)return res.status(404).json({error:'Not found'});res.json({username:acc.username,displayName:acc.display_name,color:acc.color,bio:acc.bio,pfp:acc.pfp,tags:acc.tags,createdAt:acc.created_at,lastSeen:acc.last_seen,online:isUserOnline(acc.username)})});
+app.get('/api/search-users',async(req,res)=>{const q=(req.query.q||'').trim().toLowerCase();if(q.length<2)return res.json({users:[]});const u=await query("SELECT username,display_name,color,pfp,tags FROM accounts WHERE username LIKE $1 OR LOWER(display_name) LIKE $1 LIMIT 20",['%'+q+'%']);res.json({users:u.map(x=>({username:x.username,displayName:x.display_name,color:x.color,pfp:x.pfp,tags:x.tags}))})});
+app.post('/api/friend-request',async(req,res)=>{const acc=await findByToken(req.body.token);if(!acc)return res.status(401).json({error:'Invalid token'});const t=(req.body.username||'').toLowerCase();if(!await queryOne('SELECT username FROM accounts WHERE username=$1',[t]))return res.status(404).json({error:'User not found'});if(t===acc.username)return res.status(400).json({error:'Cannot friend yourself'});if(await queryOne('SELECT user1 FROM friends WHERE user1=$1 AND user2=$2',[acc.username,t]))return res.status(400).json({error:'Already friends'});if(await queryOne('SELECT from_user FROM friend_requests WHERE from_user=$1 AND to_user=$2',[acc.username,t]))return res.status(400).json({error:'Request already sent'});await query('INSERT INTO friend_requests (from_user,to_user,timestamp) VALUES ($1,$2,$3)',[acc.username,t,Date.now()]);emitToUser(t,'friend-request',{from:acc.username,fromDisplay:acc.display_name});emitToUser(t,'notification',{type:'friend-request',from:acc.display_name});res.json({ok:true})});
+app.post('/api/friend-accept',async(req,res)=>{const acc=await findByToken(req.body.token);if(!acc)return res.status(401).json({error:'Invalid token'});const f=(req.body.from||'').toLowerCase();if(!await queryOne('SELECT from_user FROM friend_requests WHERE from_user=$1 AND to_user=$2',[f,acc.username]))return res.status(400).json({error:'No request'});await query('DELETE FROM friend_requests WHERE from_user=$1 AND to_user=$2',[f,acc.username]);const now=Date.now();await query('INSERT INTO friends (user1,user2,created_at) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING',[acc.username,f,now]);await query('INSERT INTO friends (user1,user2,created_at) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING',[f,acc.username,now]);emitToUser(f,'friend-accepted',{username:acc.username,displayName:acc.display_name});emitToUser(f,'notification',{type:'friend-accepted',from:acc.display_name});res.json({ok:true})});
+app.post('/api/friend-reject',async(req,res)=>{const acc=await findByToken(req.body.token);if(!acc)return res.status(401).json({error:'Invalid token'});await query('DELETE FROM friend_requests WHERE from_user=$1 AND to_user=$2',[(req.body.from||'').toLowerCase(),acc.username]);res.json({ok:true})});
+app.post('/api/friend-remove',async(req,res)=>{const acc=await findByToken(req.body.token);if(!acc)return res.status(401).json({error:'Invalid token'});const t=(req.body.username||'').toLowerCase();await query('DELETE FROM friends WHERE (user1=$1 AND user2=$2) OR (user1=$2 AND user2=$1)',[acc.username,t]);res.json({ok:true})});
+app.post('/api/friends',async(req,res)=>{const acc=await findByToken(req.body.token);if(!acc)return res.status(401).json({error:'Invalid token'});const fr=await query('SELECT a.username,a.display_name,a.color,a.pfp,a.tags FROM friends f JOIN accounts a ON a.username=f.user2 WHERE f.user1=$1',[acc.username]);const rq=await query('SELECT fr.from_user,fr.timestamp,a.display_name FROM friend_requests fr JOIN accounts a ON a.username=fr.from_user WHERE fr.to_user=$1',[acc.username]);res.json({friends:fr.map(f=>({username:f.username,displayName:f.display_name,color:f.color,pfp:f.pfp,tags:f.tags,online:isUserOnline(f.username)})),requests:rq.map(r=>({from:r.from_user,fromDisplay:r.display_name,timestamp:r.timestamp}))})});
+app.post('/api/dm-list',async(req,res)=>{const acc=await findByToken(req.body.token);if(!acc)return res.status(401).json({error:'Invalid token'});const rows=await query(`SELECT DISTINCT ON (channel_id) channel_id,text,file_data,timestamp FROM messages WHERE channel_type='dm' AND (channel_id LIKE $1 OR channel_id LIKE $2) AND deleted=false ORDER BY channel_id,timestamp DESC`,[acc.username+'::%','%::'+acc.username]);const convos=[];for(const r of rows){const parts=r.channel_id.split('::');const other=parts[0]===acc.username?parts[1]:parts[0];const a=await queryOne('SELECT display_name,color FROM accounts WHERE username=$1',[other]);convos.push({username:other,displayName:a?a.display_name:other,color:a?a.color:'#000',lastMessage:r.text||'[file]',lastTimestamp:parseInt(r.timestamp)})}convos.sort((a,b)=>b.lastTimestamp-a.lastTimestamp);res.json({conversations:convos})});
 
-// --- Profile picture upload ---
-app.post('/api/upload-pfp', pfpUpload.single('pfp'), (req, res) => {
-  if (!req.file) return res.status(400).json({ error: 'No file' });
-  const token = req.body.token;
-  const account = findByToken(token);
-  if (!account) {
-    // Delete the temp file
-    fs.unlinkSync(req.file.path);
-    return res.status(401).json({ error: 'Invalid token' });
-  }
-  // Remove old pfp if exists
-  const oldPfp = account.pfp;
-  if (oldPfp) {
-    const oldPath = path.join(pfpDir, path.basename(oldPfp));
-    if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
-  }
-  // Rename temp file to username-based name
-  const ext = path.extname(req.file.originalname) || '.png';
-  const newName = account.username + '_' + Date.now() + ext;
-  const newPath = path.join(pfpDir, newName);
-  fs.renameSync(req.file.path, newPath);
-
-  account.pfp = '/uploads/pfp/' + newName;
-  saveAccounts();
-  res.json({ pfp: account.pfp });
-});
-
-// --- Register ---
-app.post('/api/register', async (req, res) => {
-  const { username, displayName, password } = req.body;
-  if (!username || !password || !displayName) return res.status(400).json({ error: 'All fields required' });
-
-  const clean = username.trim().toLowerCase();
-  if (clean.length < 3 || clean.length > 24) return res.status(400).json({ error: 'Username: 3-24 chars' });
-  if (!/^[a-z0-9_]+$/.test(clean)) return res.status(400).json({ error: 'Username: letters, numbers, _ only' });
-
-  const cleanDisplay = displayName.trim().substring(0, 24);
-  if (!cleanDisplay) return res.status(400).json({ error: 'Display name required' });
-  if (password.length < 3) return res.status(400).json({ error: 'Password: 3+ chars' });
-  if (accounts[clean]) return res.status(400).json({ error: 'Username taken' });
-
-  const passwordHash = await bcrypt.hash(password, 10);
-  const token = uuidv4();
-  const color = USER_COLORS[Object.keys(accounts).length % USER_COLORS.length];
-
-  accounts[clean] = {
-    username: clean,
-    displayName: cleanDisplay,
-    passwordHash, color, token,
-    bio: '',
-    pfp: null,
-    tags: [],           // e.g. ['unavailable']
-    lastDisplayChange: 0, // timestamp of last display name change
-    createdAt: Date.now(),
-  };
-  friendStore[clean] = [];
-  friendRequests[clean] = [];
-  saveAccounts(); saveFriends(); saveFriendRequests();
-
-  res.json({ username: clean, displayName: cleanDisplay, color, token });
-});
-
-// --- Login ---
-app.post('/api/login', async (req, res) => {
-  const { username, password } = req.body;
-  if (!username || !password) return res.status(400).json({ error: 'Both fields required' });
-  const clean = username.trim().toLowerCase();
-  const account = accounts[clean];
-  if (!account) return res.status(401).json({ error: 'Invalid username or password' });
-  const valid = await bcrypt.compare(password, account.passwordHash);
-  if (!valid) return res.status(401).json({ error: 'Invalid username or password' });
-  account.token = uuidv4();
-  saveAccounts();
-  res.json({
-    username: account.username, displayName: account.displayName,
-    color: account.color, token: account.token,
-    bio: account.bio, pfp: account.pfp, tags: account.tags,
-  });
-});
-
-// --- Token auth ---
-app.post('/api/auth', (req, res) => {
-  const account = findByToken(req.body.token);
-  if (!account) return res.status(401).json({ error: 'Invalid token' });
-  res.json({
-    username: account.username, displayName: account.displayName,
-    color: account.color, token: account.token,
-    bio: account.bio, pfp: account.pfp, tags: account.tags,
-  });
-});
-
-// --- Update display name (30min cooldown) ---
-app.post('/api/update-display', (req, res) => {
-  const account = findByToken(req.body.token);
-  if (!account) return res.status(401).json({ error: 'Invalid token' });
-  const cleanDisplay = (req.body.displayName || '').trim().substring(0, 24);
-  if (!cleanDisplay) return res.status(400).json({ error: 'Display name required' });
-
-  // 30 minute cooldown check
-  const now = Date.now();
-  const cooldown = 30 * 60 * 1000; // 30 minutes in ms
-  if (account.lastDisplayChange && (now - account.lastDisplayChange) < cooldown) {
-    const remaining = Math.ceil((cooldown - (now - account.lastDisplayChange)) / 60000);
-    return res.status(400).json({ error: 'Wait ' + remaining + ' min before changing again' });
-  }
-
-  account.displayName = cleanDisplay;
-  account.lastDisplayChange = now;
-  saveAccounts();
-
-  // Notify all connected sockets about the name change
-  io.emit('user-updated', {
-    username: account.username,
-    displayName: cleanDisplay,
-  });
-
-  res.json({ displayName: cleanDisplay });
-});
-
-// --- Update bio ---
-app.post('/api/update-bio', (req, res) => {
-  const account = findByToken(req.body.token);
-  if (!account) return res.status(401).json({ error: 'Invalid token' });
-  account.bio = (req.body.bio || '').substring(0, 500);
-  saveAccounts();
-  res.json({ bio: account.bio });
-});
-
-// --- Update tags ---
-app.post('/api/update-tags', (req, res) => {
-  const account = findByToken(req.body.token);
-  if (!account) return res.status(401).json({ error: 'Invalid token' });
-  // Only allow specific tag values
-  const allowed = ['unavailable', 'busy', 'away', 'dnd'];
-  const tags = (req.body.tags || []).filter(t => allowed.includes(t));
-  account.tags = tags;
-  saveAccounts();
-  io.emit('user-updated', { username: account.username, tags });
-  res.json({ tags });
-});
-
-// --- Update name color ---
-app.post('/api/update-color', (req, res) => {
-  const account = findByToken(req.body.token);
-  if (!account) return res.status(401).json({ error: 'Invalid token' });
-  const color = (req.body.color || '').trim();
-  // Validate it's a hex color
-  if (!/^#[0-9a-fA-F]{6}$/.test(color)) return res.status(400).json({ error: 'Invalid color (use #RRGGBB)' });
-  account.color = color;
-  saveAccounts();
-  io.emit('user-updated', { username: account.username, color });
-  res.json({ color });
-});
-
-// --- Get user profile ---
-app.get('/api/profile/:username', (req, res) => {
-  const account = accounts[req.params.username];
-  if (!account) return res.status(404).json({ error: 'User not found' });
-  res.json({
-    username: account.username,
-    displayName: account.displayName,
-    color: account.color,
-    bio: account.bio,
-    pfp: account.pfp,
-    tags: account.tags,
-    createdAt: account.createdAt,
-  });
-});
-
-// --- Friend requests ---
-app.post('/api/friend-request', (req, res) => {
-  const account = findByToken(req.body.token);
-  if (!account) return res.status(401).json({ error: 'Invalid token' });
-  const target = (req.body.username || '').trim().toLowerCase();
-  if (!accounts[target]) return res.status(404).json({ error: 'User not found' });
-  if (target === account.username) return res.status(400).json({ error: 'Cannot friend yourself' });
-
-  // Check if already friends
-  if (friendStore[account.username] && friendStore[account.username].includes(target)) {
-    return res.status(400).json({ error: 'Already friends' });
-  }
-  // Check if request already pending
-  if (!friendRequests[target]) friendRequests[target] = [];
-  const already = friendRequests[target].some(r => r.from === account.username);
-  if (already) return res.status(400).json({ error: 'Request already sent' });
-
-  friendRequests[target].push({ from: account.username, timestamp: Date.now() });
-  saveFriendRequests();
-
-  // Notify target if online
-  const targetSocket = findSocketByUsername(target);
-  if (targetSocket) {
-    targetSocket.emit('friend-request', { from: account.username, fromDisplay: account.displayName });
-    targetSocket.emit('notification', { type: 'friend-request', from: account.displayName });
-  }
-
-  res.json({ ok: true });
-});
-
-app.post('/api/friend-accept', (req, res) => {
-  const account = findByToken(req.body.token);
-  if (!account) return res.status(401).json({ error: 'Invalid token' });
-  const from = (req.body.from || '').trim().toLowerCase();
-
-  if (!friendRequests[account.username]) return res.status(400).json({ error: 'No request found' });
-  const idx = friendRequests[account.username].findIndex(r => r.from === from);
-  if (idx === -1) return res.status(400).json({ error: 'No request from that user' });
-
-  // Remove request
-  friendRequests[account.username].splice(idx, 1);
-
-  // Add both as friends
-  if (!friendStore[account.username]) friendStore[account.username] = [];
-  if (!friendStore[from]) friendStore[from] = [];
-  if (!friendStore[account.username].includes(from)) friendStore[account.username].push(from);
-  if (!friendStore[from].includes(account.username)) friendStore[from].push(account.username);
-
-  saveFriendRequests(); saveFriends();
-
-  // Notify the requester if online
-  const fromSocket = findSocketByUsername(from);
-  if (fromSocket) {
-    fromSocket.emit('friend-accepted', { username: account.username, displayName: account.displayName });
-    fromSocket.emit('notification', { type: 'friend-accepted', from: account.displayName });
-  }
-
-  res.json({ ok: true });
-});
-
-app.post('/api/friend-reject', (req, res) => {
-  const account = findByToken(req.body.token);
-  if (!account) return res.status(401).json({ error: 'Invalid token' });
-  const from = (req.body.from || '').trim().toLowerCase();
-
-  if (!friendRequests[account.username]) return res.status(400).json({ error: 'No requests' });
-  friendRequests[account.username] = friendRequests[account.username].filter(r => r.from !== from);
-  saveFriendRequests();
-  res.json({ ok: true });
-});
-
-app.post('/api/friend-remove', (req, res) => {
-  const account = findByToken(req.body.token);
-  if (!account) return res.status(401).json({ error: 'Invalid token' });
-  const target = (req.body.username || '').trim().toLowerCase();
-
-  if (friendStore[account.username]) {
-    friendStore[account.username] = friendStore[account.username].filter(f => f !== target);
-  }
-  if (friendStore[target]) {
-    friendStore[target] = friendStore[target].filter(f => f !== account.username);
-  }
-  saveFriends();
-  res.json({ ok: true });
-});
-
-app.post('/api/friends', (req, res) => {
-  const account = findByToken(req.body.token);
-  if (!account) return res.status(401).json({ error: 'Invalid token' });
-
-  const friends = (friendStore[account.username] || []).map(f => {
-    const acc = accounts[f];
-    if (!acc) return null;
-    return {
-      username: acc.username,
-      displayName: acc.displayName,
-      color: acc.color,
-      pfp: acc.pfp,
-      tags: acc.tags,
-      online: isUserOnline(f),
-    };
-  }).filter(Boolean);
-
-  const requests = (friendRequests[account.username] || []).map(r => {
-    const acc = accounts[r.from];
-    return { from: r.from, fromDisplay: acc ? acc.displayName : r.from, timestamp: r.timestamp };
-  });
-
-  res.json({ friends, requests });
-});
-
-// --- Get DM conversations list ---
-app.post('/api/dm-list', (req, res) => {
-  const account = findByToken(req.body.token);
-  if (!account) return res.status(401).json({ error: 'Invalid token' });
-
-  // Find all DM keys that include this user
-  const convos = [];
-  Object.keys(dmStore).forEach(key => {
-    const parts = key.split('::');
-    if (parts.includes(account.username)) {
-      const otherUser = parts[0] === account.username ? parts[1] : parts[0];
-      const msgs = dmStore[key];
-      const lastMsg = msgs.length > 0 ? msgs[msgs.length - 1] : null;
-      const otherAccount = accounts[otherUser];
-      convos.push({
-        username: otherUser,
-        displayName: otherAccount ? otherAccount.displayName : otherUser,
-        color: otherAccount ? otherAccount.color : '#000000',
-        lastMessage: lastMsg ? (lastMsg.text || '[file]') : '',
-        lastTimestamp: lastMsg ? lastMsg.timestamp : 0,
-      });
-    }
-  });
-
-  // Sort by most recent
-  convos.sort((a, b) => b.lastTimestamp - a.lastTimestamp);
-  res.json({ conversations: convos });
-});
-
-// ============================================================
-// SOCKET STATE
-// ============================================================
-const onlineSockets = new Map(); // socketId -> {username, displayName, color, tags}
-
-function getOnlineUsers() {
-  const seen = new Set();
-  const result = [];
-  onlineSockets.forEach(u => {
-    if (!seen.has(u.username)) {
-      seen.add(u.username);
-      result.push({ username: u.username, displayName: u.displayName, color: u.color, tags: u.tags || [] });
-    }
-  });
-  return result;
-}
-
-function isUserOnline(username) {
-  let found = false;
-  onlineSockets.forEach(u => { if (u.username === username) found = true; });
-  return found;
-}
-
-function findSocketByUsername(username) {
-  for (const [sid, u] of onlineSockets) {
-    if (u.username === username) return io.sockets.sockets.get(sid);
-  }
-  return null;
-}
-
-function getPublicRoomsList() {
-  const list = [];
-  Object.keys(roomStore).forEach(id => {
-    const r = roomStore[id];
-    if (!r.private) {
-      list.push({ id, name: r.name, memberCount: r.members.length });
-    }
-  });
-  return list;
-}
-
-function getUserRoomsList(username) {
-  // Public rooms + private rooms user is a member or invited to
-  const list = [];
-  Object.keys(roomStore).forEach(id => {
-    const r = roomStore[id];
-    if (!r.private || r.members.includes(username) || r.invited.includes(username) || r.creator === username) {
-      list.push({
-        id, name: r.name, memberCount: r.members.length,
-        private: r.private || false,
-        isMember: r.members.includes(username),
-      });
-    }
-  });
-  return list;
-}
-
-// ============================================================
 // SOCKET.IO
-// ============================================================
-io.on('connection', (socket) => {
+io.on('connection',(socket)=>{
+  socket.on('join',async(data)=>{if(!data||!data.token)return;const acc=await findByToken(data.token);if(!acc)return socket.emit('join-error','Invalid session');await query('UPDATE accounts SET last_seen=$1 WHERE username=$2',[Date.now(),acc.username]);onlineSockets.set(socket.id,{username:acc.username,display_name:acc.display_name,color:acc.color,tags:acc.tags||[]});socket.join('public');const mr=await query('SELECT room_id FROM room_members WHERE username=$1',[acc.username]);for(const r of mr)socket.join(r.room_id);const frC=await query('SELECT COUNT(*) as c FROM friend_requests WHERE to_user=$1',[acc.username]);const rooms=await getUserRooms(acc.username);socket.emit('joined',{username:acc.username,displayName:acc.display_name,color:acc.color,bio:acc.bio,pfp:acc.pfp,tags:acc.tags||[],messages:[],onlineUsers:getOnlineUsers(),rooms,friendRequests:parseInt(frC[0].c)});socket.broadcast.emit('user-joined',{username:acc.username,displayName:acc.display_name,color:acc.color,tags:acc.tags||[]});io.emit('online-users',getOnlineUsers());const sysMsg={id:uuidv4(),type:'system',text:acc.display_name+' has entered the chat',timestamp:Date.now()};io.to('public').emit('public-message',sysMsg)});
 
-  // --- JOIN ---
-  socket.on('join', (data) => {
-    if (!data || !data.token) return;
-    const account = findByToken(data.token);
-    if (!account) {
-      socket.emit('join-error', 'Invalid session. Please log in again.');
-      return;
-    }
+  socket.on('public-message',async(data)=>{const u=onlineSockets.get(socket.id);if(!u)return;const msg={id:uuidv4(),type:'message',channel_type:'public',channel_id:'public',username:u.username,display_name:u.display_name,color:u.color,text:data.text||'',file_data:data.file||null,timestamp:Date.now()};await query('INSERT INTO messages (id,channel_type,channel_id,username,display_name,color,text,file_data,type,timestamp) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)',[msg.id,msg.channel_type,msg.channel_id,msg.username,msg.display_name,msg.color,msg.text,JSON.stringify(msg.file_data),msg.type,msg.timestamp]);io.to('public').emit('public-message',fmtMsg(msg))});
 
-    // Allow multiple tabs/devices (don't block duplicate logins)
-    onlineSockets.set(socket.id, {
-      username: account.username,
-      displayName: account.displayName,
-      color: account.color,
-      tags: account.tags || [],
-    });
+  socket.on('dm',async(data)=>{const u=onlineSockets.get(socket.id);if(!u)return;const target=(data.to||'').toLowerCase();const tAcc=await queryOne('SELECT username,display_name FROM accounts WHERE username=$1',[target]);if(!tAcc)return socket.emit('dm-error','User not found');const chId=getDmKey(u.username,target);const msg={id:uuidv4(),type:'dm',channel_type:'dm',channel_id:chId,username:u.username,display_name:u.display_name,color:u.color,text:data.text||'',file_data:data.file||null,timestamp:Date.now()};await query('INSERT INTO messages (id,channel_type,channel_id,username,display_name,color,text,file_data,type,timestamp) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)',[msg.id,msg.channel_type,msg.channel_id,msg.username,msg.display_name,msg.color,msg.text,JSON.stringify(msg.file_data),msg.type,msg.timestamp]);const f=fmtMsg(msg);f.to=target;f.toDisplay=tAcc.display_name;socket.emit('dm',f);emitToUser(target,'dm',f);emitToUser(target,'notification',{type:'dm',from:u.display_name,fromUsername:u.username})});
 
-    socket.join('public');
+  socket.on('dm-history',async(targetUsername)=>{const u=onlineSockets.get(socket.id);if(!u)return;const chId=getDmKey(u.username,targetUsername);const rows=await query('SELECT * FROM messages WHERE channel_type=$1 AND channel_id=$2 AND deleted=false ORDER BY timestamp DESC LIMIT 100',['dm',chId]);rows.reverse();await query('INSERT INTO read_receipts (username,channel_id,last_read) VALUES ($1,$2,$3) ON CONFLICT (username,channel_id) DO UPDATE SET last_read=$3',[u.username,chId,Date.now()]);socket.emit('dm-history',{with:targetUsername,messages:rows.map(fmtMsg)})});
 
-    // Join all rooms user is a member of
-    Object.keys(roomStore).forEach(roomId => {
-      if (roomStore[roomId].members.includes(account.username)) {
-        socket.join(roomId);
-      }
-    });
+  socket.on('create-room',async(data)=>{const u=onlineSockets.get(socket.id);if(!u)return;const name=(data.name||'').trim().substring(0,32);if(!name)return;const desc=(data.description||'').substring(0,200);const priv=data.private||false;const id=uuidv4().substring(0,8);await query('INSERT INTO rooms (id,name,description,creator,private,created_at) VALUES ($1,$2,$3,$4,$5,$6)',[id,name,desc,u.username,priv,Date.now()]);await query('INSERT INTO room_members (room_id,username,role) VALUES ($1,$2,$3)',[id,u.username,'creator']);socket.join(id);socket.emit('room-created',{id,name,private:priv});broadcastRoomLists()});
 
-    // No public message history — fresh start
-    socket.emit('joined', {
-      username: account.username,
-      displayName: account.displayName,
-      color: account.color,
-      bio: account.bio,
-      pfp: account.pfp,
-      tags: account.tags || [],
-      messages: [],
-      onlineUsers: getOnlineUsers(),
-      rooms: getUserRoomsList(account.username),
-      friendRequests: (friendRequests[account.username] || []).length,
-    });
+  socket.on('join-room',async(roomId)=>{const u=onlineSockets.get(socket.id);if(!u)return;const room=await queryOne('SELECT * FROM rooms WHERE id=$1',[roomId]);if(!room)return socket.emit('room-error','Room not found');if(await queryOne('SELECT room_id FROM room_bans WHERE room_id=$1 AND username=$2',[roomId,u.username]))return socket.emit('room-error','You are banned');const isMem=await queryOne('SELECT room_id FROM room_members WHERE room_id=$1 AND username=$2',[roomId,u.username]);const isInv=await queryOne('SELECT room_id FROM room_invites WHERE room_id=$1 AND username=$2',[roomId,u.username]);if(room.private&&!isMem&&!isInv&&room.creator!==u.username)return socket.emit('room-error','Need invite');if(!isMem){await query('INSERT INTO room_members (room_id,username,role) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING',[roomId,u.username,'member']);await query('DELETE FROM room_invites WHERE room_id=$1 AND username=$2',[roomId,u.username])}socket.join(roomId);const members=await query('SELECT rm.username,rm.role,a.display_name FROM room_members rm JOIN accounts a ON a.username=rm.username WHERE rm.room_id=$1',[roomId]);const msgs=await query('SELECT * FROM messages WHERE channel_type=$1 AND channel_id=$2 AND deleted=false ORDER BY timestamp DESC LIMIT 100',['room',roomId]);msgs.reverse();socket.emit('room-joined',{id:roomId,name:room.name,description:room.description||'',private:room.private,creator:room.creator,messages:msgs.map(fmtMsg),members:members.map(m=>({username:m.username,role:m.role,displayName:m.display_name}))});if(!isMem){const sm={id:uuidv4(),type:'system',text:u.display_name+' joined the room',timestamp:Date.now()};await query('INSERT INTO messages (id,channel_type,channel_id,username,display_name,color,text,type,timestamp) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)',[sm.id,'room',roomId,u.username,u.display_name,u.color,sm.text,'system',sm.timestamp]);io.to(roomId).emit('room-message',{roomId,message:sm});broadcastRoomLists()}});
 
-    socket.broadcast.emit('user-joined', {
-      username: account.username,
-      displayName: account.displayName,
-      color: account.color,
-      tags: account.tags || [],
-    });
-    io.emit('online-users', getOnlineUsers());
+  socket.on('room-message',async(data)=>{const u=onlineSockets.get(socket.id);if(!u)return;if(!await queryOne('SELECT room_id FROM room_members WHERE room_id=$1 AND username=$2',[data.roomId,u.username]))return;const msg={id:uuidv4(),type:'message',channel_type:'room',channel_id:data.roomId,username:u.username,display_name:u.display_name,color:u.color,text:data.text||'',file_data:data.file||null,timestamp:Date.now()};await query('INSERT INTO messages (id,channel_type,channel_id,username,display_name,color,text,file_data,type,timestamp) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)',[msg.id,msg.channel_type,msg.channel_id,msg.username,msg.display_name,msg.color,msg.text,JSON.stringify(msg.file_data),msg.type,msg.timestamp]);io.to(data.roomId).emit('room-message',{roomId:data.roomId,message:fmtMsg(msg)});const mems=await query('SELECT username FROM room_members WHERE room_id=$1 AND username!=$2',[data.roomId,u.username]);const rm=await queryOne('SELECT name FROM rooms WHERE id=$1',[data.roomId]);mems.forEach(m=>emitToUser(m.username,'notification',{type:'room',roomId:data.roomId,roomName:rm?rm.name:'',from:u.display_name}))});
 
-    const sysMsg = {
-      id: uuidv4(), type: 'system',
-      text: account.displayName + ' has entered the chat',
-      timestamp: Date.now(),
-    };
-    io.to('public').emit('public-message', sysMsg);
-  });
+  socket.on('leave-room',async(roomId)=>{const u=onlineSockets.get(socket.id);if(!u)return;await query('DELETE FROM room_members WHERE room_id=$1 AND username=$2',[roomId,u.username]);socket.leave(roomId);const rem=await query('SELECT COUNT(*) as c FROM room_members WHERE room_id=$1',[roomId]);if(parseInt(rem[0].c)===0){await query('DELETE FROM messages WHERE channel_type=$1 AND channel_id=$2',['room',roomId]);await query('DELETE FROM room_invites WHERE room_id=$1',[roomId]);await query('DELETE FROM room_bans WHERE room_id=$1',[roomId]);await query('DELETE FROM rooms WHERE id=$1',[roomId])}else{const sm={id:uuidv4(),type:'system',text:u.display_name+' left',timestamp:Date.now()};await query('INSERT INTO messages (id,channel_type,channel_id,username,display_name,color,text,type,timestamp) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)',[sm.id,'room',roomId,u.username,u.display_name,u.color,sm.text,'system',sm.timestamp]);io.to(roomId).emit('room-message',{roomId,message:sm})}broadcastRoomLists()});
 
-  // --- PUBLIC MESSAGES ---
-  socket.on('public-message', (data) => {
-    const user = onlineSockets.get(socket.id);
-    if (!user) return;
-    const msg = {
-      id: uuidv4(), type: 'message',
-      username: user.username, displayName: user.displayName,
-      color: user.color,
-      text: data.text || '', file: data.file || null,
-      timestamp: Date.now(),
-    };
-    io.to('public').emit('public-message', msg);
-  });
+  socket.on('invite-to-room',async(data)=>{const u=onlineSockets.get(socket.id);if(!u)return;if(!await queryOne('SELECT room_id FROM room_members WHERE room_id=$1 AND username=$2',[data.roomId,u.username]))return;const t=(data.username||'').toLowerCase();if(!await queryOne('SELECT username FROM accounts WHERE username=$1',[t]))return socket.emit('room-error','User not found');if(await queryOne('SELECT room_id FROM room_members WHERE room_id=$1 AND username=$2',[data.roomId,t]))return socket.emit('room-error','Already a member');if(await queryOne('SELECT room_id FROM room_bans WHERE room_id=$1 AND username=$2',[data.roomId,t]))return socket.emit('room-error','User is banned');await query('INSERT INTO room_invites (room_id,username) VALUES ($1,$2) ON CONFLICT DO NOTHING',[data.roomId,t]);const rm=await queryOne('SELECT name FROM rooms WHERE id=$1',[data.roomId]);emitToUser(t,'room-invite',{roomId:data.roomId,roomName:rm?rm.name:'',from:u.display_name});emitToUser(t,'notification',{type:'room-invite',roomName:rm?rm.name:'',from:u.display_name});socket.emit('invite-sent',{username:t,roomId:data.roomId});const tRooms=await getUserRooms(t);emitToUser(t,'rooms-list',tRooms)});
 
-  // --- DMs (persistent) ---
-  socket.on('dm', (data) => {
-    const sender = onlineSockets.get(socket.id);
-    if (!sender) return;
-    const targetUsername = (data.to || '').toLowerCase();
-    if (!accounts[targetUsername]) {
-      socket.emit('dm-error', 'User not found');
-      return;
-    }
+  socket.on('kick-from-room',async(data)=>{const u=onlineSockets.get(socket.id);if(!u)return;const rm=await queryOne('SELECT creator FROM rooms WHERE id=$1',[data.roomId]);if(!rm||rm.creator!==u.username)return socket.emit('room-error','Only creator can kick');const t=(data.username||'').toLowerCase();if(t===u.username)return;await query('DELETE FROM room_members WHERE room_id=$1 AND username=$2',[data.roomId,t]);if(data.ban)await query('INSERT INTO room_bans (room_id,username) VALUES ($1,$2) ON CONFLICT DO NOTHING',[data.roomId,t]);const sm={id:uuidv4(),type:'system',text:t+(data.ban?' was banned':' was kicked'),timestamp:Date.now()};await query('INSERT INTO messages (id,channel_type,channel_id,username,display_name,color,text,type,timestamp) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)',[sm.id,'room',data.roomId,u.username,u.display_name,u.color,sm.text,'system',sm.timestamp]);io.to(data.roomId).emit('room-message',{roomId:data.roomId,message:sm});emitToUser(t,'kicked-from-room',{roomId:data.roomId,ban:!!data.ban});broadcastRoomLists()});
 
-    const dmKey = getDmKey(sender.username, targetUsername);
-    if (!dmStore[dmKey]) dmStore[dmKey] = [];
+  socket.on('edit-message',async(data)=>{const u=onlineSockets.get(socket.id);if(!u)return;const msg=await queryOne('SELECT * FROM messages WHERE id=$1',[data.messageId]);if(!msg||msg.username!==u.username)return;await query('UPDATE messages SET text=$1,edited=true WHERE id=$2',[(data.text||'').substring(0,2000),data.messageId]);const p={messageId:data.messageId,text:(data.text||'').substring(0,2000),channelType:msg.channel_type,channelId:msg.channel_id};if(msg.channel_type==='public')io.to('public').emit('message-edited',p);else if(msg.channel_type==='room')io.to(msg.channel_id).emit('message-edited',p);else{msg.channel_id.split('::').forEach(un=>emitToUser(un,'message-edited',p))}});
 
-    const targetAccount = accounts[targetUsername];
-    const msg = {
-      id: uuidv4(), type: 'dm',
-      from: sender.username, fromDisplay: sender.displayName, fromColor: sender.color,
-      to: targetUsername, toDisplay: targetAccount.displayName,
-      text: data.text || '', file: data.file || null,
-      timestamp: Date.now(),
-    };
+  socket.on('delete-message',async(data)=>{const u=onlineSockets.get(socket.id);if(!u)return;const msg=await queryOne('SELECT * FROM messages WHERE id=$1',[data.messageId]);if(!msg||msg.username!==u.username)return;await query('UPDATE messages SET deleted=true WHERE id=$1',[data.messageId]);const p={messageId:data.messageId,channelType:msg.channel_type,channelId:msg.channel_id};if(msg.channel_type==='public')io.to('public').emit('message-deleted',p);else if(msg.channel_type==='room')io.to(msg.channel_id).emit('message-deleted',p);else{msg.channel_id.split('::').forEach(un=>emitToUser(un,'message-deleted',p))}});
 
-    dmStore[dmKey].push(msg);
-    // Cap at 500 messages per conversation
-    if (dmStore[dmKey].length > 500) dmStore[dmKey] = dmStore[dmKey].slice(-500);
-    saveDMs();
+  socket.on('react',async(data)=>{const u=onlineSockets.get(socket.id);if(!u)return;const msg=await queryOne('SELECT * FROM messages WHERE id=$1',[data.messageId]);if(!msg)return;const reactions=msg.reactions||{};const emoji=(data.emoji||'').substring(0,8);if(!emoji)return;if(!reactions[emoji])reactions[emoji]=[];const idx=reactions[emoji].indexOf(u.username);if(idx>=0)reactions[emoji].splice(idx,1);else reactions[emoji].push(u.username);if(reactions[emoji]&&reactions[emoji].length===0)delete reactions[emoji];await query('UPDATE messages SET reactions=$1 WHERE id=$2',[JSON.stringify(reactions),data.messageId]);const p={messageId:data.messageId,reactions,channelType:msg.channel_type,channelId:msg.channel_id};if(msg.channel_type==='public')io.to('public').emit('message-reacted',p);else if(msg.channel_type==='room')io.to(msg.channel_id).emit('message-reacted',p);else{msg.channel_id.split('::').forEach(un=>emitToUser(un,'message-reacted',p))}});
 
-    // Send to sender
-    socket.emit('dm', msg);
-    // Send to all sockets of the recipient
-    onlineSockets.forEach((u, sid) => {
-      if (u.username === targetUsername && sid !== socket.id) {
-        const targetSock = io.sockets.sockets.get(sid);
-        if (targetSock) {
-          targetSock.emit('dm', msg);
-          targetSock.emit('notification', { type: 'dm', from: sender.displayName, fromUsername: sender.username });
-        }
-      }
-    });
-  });
+  socket.on('typing',(data)=>{const u=onlineSockets.get(socket.id);if(!u)return;if(data.room==='public')socket.broadcast.to('public').emit('typing',{displayName:u.display_name,room:'public'});else if(data.room)socket.broadcast.to(data.room).emit('typing',{displayName:u.display_name,room:data.room});else if(data.to)emitToUser(data.to,'typing',{displayName:u.display_name,dm:true})});
 
-  // --- DM history (persistent) ---
-  socket.on('dm-history', (targetUsername) => {
-    const user = onlineSockets.get(socket.id);
-    if (!user) return;
-    const dmKey = getDmKey(user.username, targetUsername);
-    const messages = dmStore[dmKey] || [];
-    socket.emit('dm-history', { with: targetUsername, messages: messages.slice(-100) });
-  });
-
-  // --- ROOMS ---
-  socket.on('create-room', (data) => {
-    const user = onlineSockets.get(socket.id);
-    if (!user) return;
-
-    const roomName = (data.name || '').trim().substring(0, 32);
-    if (!roomName) return;
-    const isPrivate = data.private || false;
-
-    const roomId = uuidv4().substring(0, 8);
-    roomStore[roomId] = {
-      name: roomName,
-      creator: user.username,
-      private: isPrivate,
-      members: [user.username],
-      invited: [],
-      messages: [],
-    };
-    saveRooms();
-
-    socket.join(roomId);
-    socket.emit('room-created', { id: roomId, name: roomName, private: isPrivate });
-
-    // Broadcast updated room list to all users
-    onlineSockets.forEach((u, sid) => {
-      const s = io.sockets.sockets.get(sid);
-      if (s) s.emit('rooms-list', getUserRoomsList(u.username));
-    });
-  });
-
-  socket.on('join-room', (roomId) => {
-    const user = onlineSockets.get(socket.id);
-    if (!user) return;
-    const room = roomStore[roomId];
-    if (!room) { socket.emit('room-error', 'Room not found'); return; }
-
-    // Private room check — must be invited or already a member
-    if (room.private && !room.members.includes(user.username) && !room.invited.includes(user.username) && room.creator !== user.username) {
-      socket.emit('room-error', 'You need an invite to join this room');
-      return;
-    }
-
-    if (!room.members.includes(user.username)) room.members.push(user.username);
-    // Remove from invited list since they've joined
-    room.invited = room.invited.filter(u => u !== user.username);
-    saveRooms();
-
-    socket.join(roomId);
-
-    // Send room history (persistent for rooms)
-    socket.emit('room-joined', {
-      id: roomId, name: room.name,
-      messages: room.messages.slice(-100),
-      members: room.members,
-      private: room.private,
-      creator: room.creator,
-    });
-
-    const sysMsg = {
-      id: uuidv4(), type: 'system',
-      text: user.displayName + ' joined the room',
-      timestamp: Date.now(),
-    };
-    room.messages.push(sysMsg);
-    if (room.messages.length > 500) room.messages = room.messages.slice(-500);
-    saveRooms();
-    io.to(roomId).emit('room-message', { roomId, message: sysMsg });
-
-    onlineSockets.forEach((u, sid) => {
-      const s = io.sockets.sockets.get(sid);
-      if (s) s.emit('rooms-list', getUserRoomsList(u.username));
-    });
-  });
-
-  socket.on('room-message', (data) => {
-    const user = onlineSockets.get(socket.id);
-    if (!user) return;
-    const room = roomStore[data.roomId];
-    if (!room || !room.members.includes(user.username)) return;
-
-    const msg = {
-      id: uuidv4(), type: 'message',
-      username: user.username, displayName: user.displayName,
-      color: user.color,
-      text: data.text || '', file: data.file || null,
-      timestamp: Date.now(),
-    };
-
-    room.messages.push(msg);
-    if (room.messages.length > 500) room.messages = room.messages.slice(-500);
-    saveRooms();
-
-    io.to(data.roomId).emit('room-message', { roomId: data.roomId, message: msg });
-
-    // Notify offline room members
-    room.members.forEach(memberUsername => {
-      if (memberUsername !== user.username) {
-        const memberSocket = findSocketByUsername(memberUsername);
-        if (memberSocket) {
-          // They might not be viewing this room, send notification
-          memberSocket.emit('notification', { type: 'room', roomId: data.roomId, roomName: room.name, from: user.displayName });
-        }
-      }
-    });
-  });
-
-  socket.on('leave-room', (roomId) => {
-    const user = onlineSockets.get(socket.id);
-    if (!user) return;
-    const room = roomStore[roomId];
-    if (!room) return;
-
-    room.members = room.members.filter(m => m !== user.username);
-    socket.leave(roomId);
-
-    if (room.members.length === 0) {
-      delete roomStore[roomId];
-    } else {
-      const sysMsg = {
-        id: uuidv4(), type: 'system',
-        text: user.displayName + ' left the room',
-        timestamp: Date.now(),
-      };
-      room.messages.push(sysMsg);
-      io.to(roomId).emit('room-message', { roomId, message: sysMsg });
-    }
-    saveRooms();
-
-    onlineSockets.forEach((u, sid) => {
-      const s = io.sockets.sockets.get(sid);
-      if (s) s.emit('rooms-list', getUserRoomsList(u.username));
-    });
-  });
-
-  // --- Invite to private room ---
-  socket.on('invite-to-room', (data) => {
-    const user = onlineSockets.get(socket.id);
-    if (!user) return;
-    const room = roomStore[data.roomId];
-    if (!room) return;
-
-    // Only members can invite
-    if (!room.members.includes(user.username)) return;
-
-    const targetUsername = (data.username || '').trim().toLowerCase();
-    if (!accounts[targetUsername]) {
-      socket.emit('room-error', 'User not found');
-      return;
-    }
-    if (room.members.includes(targetUsername)) {
-      socket.emit('room-error', 'Already a member');
-      return;
-    }
-    if (room.invited.includes(targetUsername)) {
-      socket.emit('room-error', 'Already invited');
-      return;
-    }
-
-    room.invited.push(targetUsername);
-    saveRooms();
-
-    // Notify the invited user
-    const targetSocket = findSocketByUsername(targetUsername);
-    if (targetSocket) {
-      targetSocket.emit('room-invite', { roomId: data.roomId, roomName: room.name, from: user.displayName });
-      targetSocket.emit('notification', { type: 'room-invite', roomName: room.name, from: user.displayName });
-      targetSocket.emit('rooms-list', getUserRoomsList(targetUsername));
-    }
-
-    socket.emit('invite-sent', { username: targetUsername, roomId: data.roomId });
-  });
-
-  // --- TYPING ---
-  socket.on('typing', (data) => {
-    const user = onlineSockets.get(socket.id);
-    if (!user) return;
-    if (data.room === 'public') {
-      socket.broadcast.to('public').emit('typing', { displayName: user.displayName, room: 'public' });
-    } else if (data.room) {
-      socket.broadcast.to(data.room).emit('typing', { displayName: user.displayName, room: data.room });
-    } else if (data.to) {
-      onlineSockets.forEach((u, sid) => {
-        if (u.username === data.to && sid !== socket.id) {
-          const s = io.sockets.sockets.get(sid);
-          if (s) s.emit('typing', { displayName: user.displayName, dm: true });
-        }
-      });
-    }
-  });
-
-  // --- DISCONNECT ---
-  socket.on('disconnect', () => {
-    const user = onlineSockets.get(socket.id);
-    if (user) {
-      onlineSockets.delete(socket.id);
-
-      // Only broadcast leave if user has no other connected sockets
-      if (!isUserOnline(user.username)) {
-        const sysMsg = {
-          id: uuidv4(), type: 'system',
-          text: user.displayName + ' has left the chat',
-          timestamp: Date.now(),
-        };
-        io.to('public').emit('public-message', sysMsg);
-        io.emit('online-users', getOnlineUsers());
-      }
-    }
-  });
+  socket.on('disconnect',async()=>{const u=onlineSockets.get(socket.id);if(u){await query('UPDATE accounts SET last_seen=$1 WHERE username=$2',[Date.now(),u.username]);onlineSockets.delete(socket.id);if(!isUserOnline(u.username)){const sm={id:uuidv4(),type:'system',text:u.display_name+' has left the chat',timestamp:Date.now()};io.to('public').emit('public-message',sm);io.emit('online-users',getOnlineUsers())}}});
 });
 
-// ============================================================
 // START
-// ============================================================
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log('JorgeChat v3 on port ' + PORT));
+const PORT=process.env.PORT||3000;
+initDB().then(()=>{server.listen(PORT,()=>console.log('JorgeChat v4 on port '+PORT))}).catch(e=>{console.error('DB init failed:',e);process.exit(1)});
