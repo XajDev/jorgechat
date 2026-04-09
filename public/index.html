@@ -496,6 +496,13 @@ function openAdmin(){showMod('m-admin');api('/api/admin/stats',{token:myTk},func
 function admBadge(action){var u=$('adm-bu').value,b=$('adm-bb').value;if(!u||!b)return;api('/api/admin/set-badge',{token:myTk,username:u,badge:b,action:action},function(d){$('adm-be').innerHTML=d.error?'<span style="color:#f00">'+esc(d.error)+'</span>':'<span style="color:green">Done! Badges: '+JSON.stringify(d.badges)+'</span>'})}
 function admDel(u){if(!confirm('Delete user '+u+'? Cannot undo.'))return;api('/api/admin/delete-user',{token:myTk,username:u},function(d){if(d.error)alert(d.error);else openAdmin()})}
 
+// GIF Picker — uses GIPHY SDK (@giphy/js-components)
+var gifPickerReady=false,gifMode='trending',gifSearchTO2=null;
+function toggleGifPicker(){var el=$('gif-picker');if(el.style.display==='none'){el.style.display='block';if(!gifPickerReady){GiphyPicker.init('gif-grid',function(url){sendGif(url);toggleGifPicker()});gifPickerReady=true}GiphyPicker.open('gif-grid');$('gif-q').focus()}else{el.style.display='none';GiphyPicker.close()}}
+function gifSetMode(mode){gifMode=mode;var tabs=document.querySelectorAll('#gif-picker .stab');for(var i=0;i<tabs.length;i++)tabs[i].className='stab';$('gif-tab-'+mode).className='stab on';var q=$('gif-q').value.trim();GiphyPicker.setMode('gif-grid',mode,q)}
+function gifDoSearch(){clearTimeout(gifSearchTO2);gifSearchTO2=setTimeout(function(){var q=$('gif-q').value.trim();if(gifMode==='stickers')GiphyPicker.stickers('gif-grid',q);else if(q)GiphyPicker.search('gif-grid',q);else GiphyPicker.setMode('gif-grid','trending','')},400)}
+function sendGif(url){var fileData={url:url,originalName:'giphy.gif',fileType:'image',mimeType:'image/gif',size:0};emitM('',fileData)}
+
 // User Directory
 function openDirectory(){showMod('m-dir');$('dir-q').value='';loadDirectory('')}
 var dirFilter='';
