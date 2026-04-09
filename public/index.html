@@ -208,6 +208,18 @@
 </table>
 </div>
 
+<!-- Rename Room -->
+<div class="mw" id="m-ren" style="margin-top:-60px;margin-left:-140px;width:280px">
+<table cellpadding="0" cellspacing="0" border="0" width="100%" class="R">
+  <tr><td class="T">Rename Room</td></tr>
+  <tr><td style="padding:16px;background:#ece9d8">
+    <b>New Name:</b><br><input class="I" id="ren-n" maxlength="32" style="width:100%"><br><br>
+    <div id="ren-e" style="color:#f00;font-size:10px;min-height:14px"></div>
+    <div align="right"><input type="button" class="B" value="Cancel" onclick="closeMod()"> <input type="button" class="B" value="Rename" onclick="doRenameRoom()"></div>
+  </td></tr>
+</table>
+</div>
+
 <!-- Settings -->
 <div class="mw" id="m-set" style="margin-top:-200px;margin-left:-200px;width:400px">
 <table cellpadding="0" cellspacing="0" border="0" width="100%" class="R">
@@ -296,7 +308,7 @@
 <div class="lc" id="lbc" onclick="closeLB()"><img id="lbi" src=""><br><span style="color:#fff;font-size:10px">[click to close]</span></div>
 
 <script>
-var sk=null,myU='',myDN='',myCol='',myTk='',curCh='public',curTy='public',pendF=null,unread={},typTO=null;
+var sk=null,myU='',myDN='',myCol='',myTk='',curCh='public',curTy='public',pendF=null,unread={},typTO=null,curRoomId='',curRoomCreator='';
 var $=function(id){return document.getElementById(id)};
 
 // Auth tab switch
@@ -393,10 +405,17 @@ function setupSk(){
   sk.on('room-joined',function(d){
     $('msgs').innerHTML='';
     for(var i=0;i<d.messages.length;i++)rMsg(d.messages[i]);scr();
-    // Show invite button for rooms
-    if(d.private){
-      $('ch-actions').innerHTML='<input type="button" class="B Bs" value="Invite" onclick="showInv(\''+d.id+'\')">';
-    }else{$('ch-actions').innerHTML='';}
+    // Room action buttons in header
+    var acts='';
+    if(d.private) acts+='<input type="button" class="B Bs" value="Invite" onclick="showInv(\''+d.id+'\')">';
+    acts+=' <input type="button" class="B Bs" value="Leave" onclick="leaveRoom(\''+d.id+'\')">';
+    if(d.creator===myU){
+      acts+=' <input type="button" class="B Bs" value="Rename" onclick="showRenameRoom(\''+escA(d.id)+'\',\''+escA(d.name)+'\')">';
+      acts+=' <input type="button" class="B Bs" value="Delete" onclick="deleteRoom(\''+escA(d.id)+'\')">';
+    }
+    $('ch-actions').innerHTML=acts;
+    // Store current room info for later use
+    curRoomId=d.id;curRoomCreator=d.creator;
   });
   sk.on('room-created',function(d){swRoom(d.id,d.name);});
   sk.on('room-error',function(e){$('sbt').innerHTML='Error: '+esc(e);});
@@ -431,6 +450,15 @@ function setupSk(){
   sk.on('kicked-from-room',function(d){
     if(curCh==='room:'+d.roomId){swCh('public')}
     notify('You were '+(d.ban?'banned':'kicked')+' from a room');
+  });
+  sk.on('room-renamed',function(d){
+    // Update header if we're in that room
+    if(curCh==='room:'+d.roomId){$('ch-t').innerHTML='# '+esc(d.name)}
+    notify('Room renamed to #'+d.name);
+  });
+  sk.on('room-deleted',function(d){
+    if(curCh==='room:'+d.roomId){swCh('public')}
+    notify('Room #'+d.name+' was deleted');
   });
   sk.on('disconnect',function(){$('st-i').style.color='#f00';$('st-l').innerHTML='Disconnected';$('sbt').innerHTML='Reconnecting...';});
   sk.on('connect',function(){$('st-i').style.color='#0c0';$('st-l').innerHTML='Connected';$('sbt').innerHTML='Connected';});
@@ -686,7 +714,7 @@ function notify(text){
 
 // Modals
 function closeMod(){$('m-bg').style.display='none';
-  var mods=['m-cr','m-inv','m-set','m-fr','m-prof'];
+  var mods=['m-cr','m-inv','m-ren','m-set','m-fr','m-prof'];
   for(var i=0;i<mods.length;i++)$(mods[i]).style.display='none';
 }
 function showMod(id){$('m-bg').style.display='block';$(id).style.display='block';}
@@ -708,6 +736,32 @@ function doInvite(){
   sk.emit('invite-to-room',{roomId:invRoomId,username:u});
 }
 sk&&sk.on('room-error',function(e){$('inv-e').innerHTML='<span style="color:#f00">'+esc(e)+'</span>';});
+
+// Rename room
+var renRoomId='';
+function showRenameRoom(rid,currentName){
+  renRoomId=rid;$('ren-n').value=currentName;$('ren-e').innerHTML='';showMod('m-ren');$('ren-n').focus();$('ren-n').select();
+}
+$('ren-n').onkeydown=function(e){if(e.keyCode===13)doRenameRoom();if(e.keyCode===27)closeMod()};
+function doRenameRoom(){
+  var n=$('ren-n').value.replace(/^\s+|\s+$/g,'');
+  if(!n){$('ren-e').innerHTML='Name required';return}
+  sk.emit('rename-room',{roomId:renRoomId,name:n});
+  closeMod();
+}
+
+// Delete room
+function deleteRoom(rid){
+  if(!confirm('Delete this room and all its messages? This cannot be undone.'))return;
+  sk.emit('delete-room',{roomId:rid});
+}
+
+// Leave room
+function leaveRoom(rid){
+  if(!confirm('Leave this room?'))return;
+  sk.emit('leave-room',rid);
+  swCh('public');
+}
 
 // Settings
 function openSettings(){
