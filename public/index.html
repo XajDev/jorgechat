@@ -5,6 +5,7 @@
 <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
 <title>JorgeChat - jorgepompacarrera.net</title>
 <script src="/socket.io/socket.io.js"></script>
+<script src="/giphy-bundle.js"></script>
 <style>
 body{margin:0;padding:0;font-family:Tahoma,Verdana,Arial,sans-serif;font-size:11px;color:#000}
 a{color:#0000ff}a:hover{color:#f00}
@@ -32,6 +33,7 @@ body.xp-silver .ni{background:#f0f0e0;border-color:#b0b0b0}
 body.xp-silver .I{border-color:#b0b0b0}
 body.xp-silver .msg-acts span{border-color:#b0b0b0;background:#e0e0e0}
 body.xp-silver .cpick{border-color:#b0b0b0}
+body.xp-silver .mp{background:#e8e8e8}
 /* XP Olive — warm olive/green UI */
 body.xp-olive{background:#7a8a5a}
 body.xp-olive .R{border-color:#b0b898;background:#e8e8d8}
@@ -54,6 +56,7 @@ body.xp-olive .ni{background:#f0f0d8;border-color:#a0a890}
 body.xp-olive .I{border-color:#a0a890}
 body.xp-olive .msg-acts span{border-color:#a0a890;background:#dde0c8}
 body.xp-olive .cpick{border-color:#a0a890}
+body.xp-olive .mp{background:#e8e8d8}
 /* Dark theme — full dark overrides for everything */
 body.dark{background:#1a1a2e;color:#c0c0c0}
 body.dark a{color:#6688cc}
@@ -103,7 +106,17 @@ body.dark .pfp{border-color:#444}
 body.dark .cpick{border-color:#444}
 body.dark .cpick:hover{border-color:#666}
 body.dark select.I{background:#1a1a2e;color:#c0c0c0;border-color:#444}
-body.dark textarea.I{background:#1a1a2e;color:#c0c0c0;border-color:#444}.R{border:2px outset #d4d0c8;background:#ece9d8}
+body.dark textarea.I{background:#1a1a2e;color:#c0c0c0;border-color:#444}
+body.dark .mp{background:#2a2a3e}
+body.dark .mw{color:#c0c0c0}
+body.dark .mw b{color:#c0c0c0}
+body.dark .mw label{color:#c0c0c0}
+body.dark .mw span{color:#c0c0c0}
+body.dark .mw td{color:#c0c0c0}
+body.dark hr{border-color:#444}
+body.dark #gif-picker{border-color:#444}
+body.dark #gif-results img{border-color:#444}.R{border:2px outset #d4d0c8;background:#ece9d8}
+.mp{background:#ece9d8}
 .S{border:2px inset #d4d0c8;background:#fff}
 .T{background:#0a246a;color:#fff;font-weight:bold;font-size:11px;padding:3px 6px}
 .T2{background:#7f9db9;color:#d4d0c8;font-weight:bold;font-size:11px;padding:3px 6px}
@@ -173,12 +186,12 @@ body.dark textarea.I{background:#1a1a2e;color:#c0c0c0;border-color:#444}.R{borde
 <tr><td class="T" style="font-size:13px;padding:6px 8px">
   JorgeChat <span style="font-weight:normal;font-size:10px;margin-left:8px">jorgepompacarrera.net</span>
 </td></tr>
-<tr><td style="background:#ece9d8;padding:12px 20px 4px 20px">
+<tr><td class="mp" style="padding:12px 20px 4px 20px">
   <span class="tb on" id="t-li" onclick="swT('li')">Sign In</span>
   <span class="tb" id="t-re" onclick="swT('re')">Register</span>
 </td></tr>
-<tr><td style="background:#ece9d8;padding:0">
-  <div id="f-li" style="padding:16px 20px 20px 20px">
+<tr><td class="mp" style="padding:0">
+  <div id="f-li" class="mp" style="padding:16px 20px 20px 20px">
     <table cellspacing="4"><tr><td align="right">Username:</td><td><input class="I" id="li-u" style="width:200px" maxlength="24"></td></tr>
     <tr><td align="right">Password:</td><td><input type="password" class="I" id="li-p" style="width:200px" maxlength="64"></td></tr>
     <tr><td></td><td style="padding-top:8px"><input type="button" class="B" id="li-b" value="Sign In >>"></td></tr>
@@ -193,7 +206,7 @@ body.dark textarea.I{background:#1a1a2e;color:#c0c0c0;border-color:#444}.R{borde
     <tr><td></td><td style="font-size:9px;color:gray">letters, numbers, underscores for username</td></tr></table>
   </div>
 </td></tr>
-<tr><td align="center" style="background:#ece9d8;padding:4px;border-top:1px groove #d4d0c8"><span style="font-size:9px;color:gray">v5.0</span></td></tr>
+<tr><td align="center" class="mp" style="padding:4px;border-top:1px groove #d4d0c8"><span style="font-size:9px;color:gray">v5.0</span></td></tr>
 </table>
 </td></tr></table>
 </div>
@@ -212,6 +225,7 @@ body.dark textarea.I{background:#1a1a2e;color:#c0c0c0;border-color:#444}.R{borde
     <span id="st-l">Connected</span> |
     <b id="my-dn"></b>
     <input type="button" class="B Bs" value="Search" onclick="openSearch()">
+    <input type="button" class="B Bs" value="Directory" onclick="openDirectory()">
     <input type="button" class="B Bs" value="Settings" onclick="openSettings()">
     <input type="button" class="B Bs" value="Friends" onclick="openFriends()">
     <input type="button" class="B Bs" id="admin-btn" value="Admin" onclick="openAdmin()" style="display:none">
@@ -245,7 +259,7 @@ body.dark textarea.I{background:#1a1a2e;color:#c0c0c0;border-color:#444}.R{borde
       <div id="msgs" class="S sc" style="position:absolute;top:0;bottom:0;left:0;right:0;padding:4px"></div>
     </div>
   </td></tr>
-  <tr><td style="height:16px;padding:0 8px;background:#ece9d8">
+  <tr><td class="mp" style="height:16px;padding:0 8px">
     <span id="typ" style="font-size:10px;color:gray"></span>
   </td></tr>
   <tr><td style="height:1px;padding:0">
@@ -255,8 +269,20 @@ body.dark textarea.I{background:#1a1a2e;color:#c0c0c0;border-color:#444}.R{borde
     <table width="100%" cellpadding="0" cellspacing="2" border="0"><tr>
       <td><input class="I" id="mi" style="width:100%" placeholder="Type a message... (@here @everyone /shrug /me)" autocomplete="off"></td>
       <td width="40"><input type="button" class="B Bs" value="Add +" onclick="document.getElementById('fi').click()" title="Attach file"><input type="file" id="fi" style="display:none"></td>
+      <td width="34"><input type="button" class="B Bs" value="GIF" onclick="toggleGifPicker()" title="Search GIFs"></td>
       <td width="50"><input type="button" class="B" id="sb" value="Send"></td>
     </tr></table>
+    <!-- GIF Picker — powered by Giphy SDK -->
+    <div id="gif-picker" class="mp" style="display:none;border:2px inset #d4d0c8;padding:4px;margin-top:4px">
+      <div style="margin-bottom:4px">
+        <span class="stab on" id="gif-tab-trending" onclick="gifSetMode('trending')">Trending</span>
+        <span class="stab" id="gif-tab-stickers" onclick="gifSetMode('stickers')">Stickers</span>
+        <input type="button" class="B Bs" value="X" onclick="toggleGifPicker()" style="float:right">
+      </div>
+      <input class="I" id="gif-q" style="width:100%" placeholder="Search GIFs..." oninput="gifDoSearch()">
+      <div style="font-size:8px;color:gray;margin:2px 0">Powered by GIPHY</div>
+      <div id="gif-grid" style="max-height:250px;overflow-y:auto;overflow-x:hidden;margin-top:4px"></div>
+    </div>
   </td></tr>
 </table>
 </td>
@@ -272,7 +298,7 @@ body.dark textarea.I{background:#1a1a2e;color:#c0c0c0;border-color:#444}.R{borde
 <div class="mo" id="m-bg" onclick="closeMod()"></div>
 <!-- Create Room -->
 <div class="mw" id="m-cr" style="margin-top:-80px;margin-left:-150px;width:300px">
-<table cellpadding="0" cellspacing="0" border="0" width="100%" class="R"><tr><td class="T">Create Room</td></tr><tr><td style="padding:16px;background:#ece9d8">
+<table cellpadding="0" cellspacing="0" border="0" width="100%" class="R"><tr><td class="T">Create Room</td></tr><tr><td class="mp" style="padding:16px">
   <b>Name:</b><br><input class="I" id="cr-n" maxlength="32" style="width:100%"><br><br>
   <b>Description:</b><br><input class="I" id="cr-d" maxlength="200" style="width:100%"><br><br>
   <input type="checkbox" id="cr-p"> <label for="cr-p">Private (invite only)</label><br><br>
@@ -280,21 +306,21 @@ body.dark textarea.I{background:#1a1a2e;color:#c0c0c0;border-color:#444}.R{borde
 </td></tr></table></div>
 <!-- Invite -->
 <div class="mw" id="m-inv" style="margin-top:-60px;margin-left:-130px;width:260px">
-<table cellpadding="0" cellspacing="0" border="0" width="100%" class="R"><tr><td class="T">Invite User</td></tr><tr><td style="padding:16px;background:#ece9d8">
+<table cellpadding="0" cellspacing="0" border="0" width="100%" class="R"><tr><td class="T">Invite User</td></tr><tr><td class="mp" style="padding:16px">
   <b>Username:</b><br><input class="I" id="inv-u" maxlength="24" style="width:100%"><br><br>
   <div id="inv-e" style="font-size:10px;min-height:14px"></div>
   <div align="right"><input type="button" class="B" value="Cancel" onclick="closeMod()"> <input type="button" class="B" value="Invite" onclick="doInvite()"></div>
 </td></tr></table></div>
 <!-- Rename -->
 <div class="mw" id="m-ren" style="margin-top:-60px;margin-left:-140px;width:280px">
-<table cellpadding="0" cellspacing="0" border="0" width="100%" class="R"><tr><td class="T">Rename Room</td></tr><tr><td style="padding:16px;background:#ece9d8">
+<table cellpadding="0" cellspacing="0" border="0" width="100%" class="R"><tr><td class="T">Rename Room</td></tr><tr><td class="mp" style="padding:16px">
   <b>New Name:</b><br><input class="I" id="ren-n" maxlength="32" style="width:100%"><br><br>
   <div id="ren-e" style="font-size:10px;min-height:14px"></div>
   <div align="right"><input type="button" class="B" value="Cancel" onclick="closeMod()"> <input type="button" class="B" value="Rename" onclick="doRenameRoom()"></div>
 </td></tr></table></div>
 <!-- Settings -->
 <div class="mw" id="m-set" style="margin-top:-200px;margin-left:-200px;width:400px">
-<table cellpadding="0" cellspacing="0" border="0" width="100%" class="R"><tr><td class="T">Settings</td></tr><tr><td style="padding:16px;background:#ece9d8">
+<table cellpadding="0" cellspacing="0" border="0" width="100%" class="R"><tr><td class="T">Settings</td></tr><tr><td class="mp" style="padding:16px">
   <div style="margin-bottom:8px">
     <div class="stab on" onclick="swST(this,'set-dn')">Name</div>
     <div class="stab" onclick="swST(this,'set-color')">Color</div>
@@ -313,7 +339,7 @@ body.dark textarea.I{background:#1a1a2e;color:#c0c0c0;border-color:#444}.R{borde
 </td></tr></table></div>
 <!-- Friends -->
 <div class="mw" id="m-fr" style="margin-top:-180px;margin-left:-180px;width:360px">
-<table cellpadding="0" cellspacing="0" border="0" width="100%" class="R"><tr><td class="T">Friends</td></tr><tr><td style="padding:16px;background:#ece9d8">
+<table cellpadding="0" cellspacing="0" border="0" width="100%" class="R"><tr><td class="T">Friends</td></tr><tr><td class="mp" style="padding:16px">
   <b>Add Friend (username):</b><br><input class="I" id="fr-u" maxlength="24" style="width:200px"> <input type="button" class="B" value="Send Request" onclick="sendFR()">
   <div id="fr-e" style="font-size:10px;min-height:14px"></div><hr style="border:1px groove #d4d0c8">
   <b>Pending Requests:</b><div id="fr-req" class="sc" style="max-height:100px;margin:4px 0"></div><hr style="border:1px groove #d4d0c8">
@@ -322,7 +348,7 @@ body.dark textarea.I{background:#1a1a2e;color:#c0c0c0;border-color:#444}.R{borde
 </td></tr></table></div>
 <!-- Profile -->
 <div class="mw" id="m-prof" style="margin-top:-150px;margin-left:-160px;width:320px">
-<table cellpadding="0" cellspacing="0" border="0" width="100%" class="R"><tr><td class="T" id="prof-title">Profile</td></tr><tr><td style="padding:16px;background:#ece9d8">
+<table cellpadding="0" cellspacing="0" border="0" width="100%" class="R"><tr><td class="T" id="prof-title">Profile</td></tr><tr><td class="mp" style="padding:16px">
   <table cellspacing="8"><tr><td valign="top"><img id="prof-pfp" class="pfp" src=""></td>
   <td valign="top"><b id="prof-dn" style="font-size:14px"></b><span id="prof-tags"></span><span id="prof-badges"></span><br><span style="color:gray" id="prof-un"></span><br><span id="prof-online" style="font-size:10px"></span><br><br><div id="prof-bio" style="font-size:11px;max-width:180px;word-wrap:break-word"></div></td></tr></table>
   <div style="font-size:9px;color:gray" id="prof-joined"></div>
@@ -330,18 +356,26 @@ body.dark textarea.I{background:#1a1a2e;color:#c0c0c0;border-color:#444}.R{borde
 </td></tr></table></div>
 <!-- Search -->
 <div class="mw" id="m-search" style="margin-top:-180px;margin-left:-180px;width:360px">
-<table cellpadding="0" cellspacing="0" border="0" width="100%" class="R"><tr><td class="T">Search Messages</td></tr><tr><td style="padding:16px;background:#ece9d8">
+<table cellpadding="0" cellspacing="0" border="0" width="100%" class="R"><tr><td class="T">Search Messages</td></tr><tr><td class="mp" style="padding:16px">
   <input class="I" id="srch-q" style="width:250px" placeholder="Search..."> <input type="button" class="B" value="Search" onclick="doMsgSearch()">
   <div id="srch-r" class="sc" style="max-height:300px;margin:8px 0;font-size:11px"></div>
   <div align="right"><input type="button" class="B" value="Close" onclick="closeMod()"></div>
 </td></tr></table></div>
 <!-- Admin -->
 <div class="mw" id="m-admin" style="margin-top:-200px;margin-left:-220px;width:440px">
-<table cellpadding="0" cellspacing="0" border="0" width="100%" class="R"><tr><td class="T">Admin Panel</td></tr><tr><td style="padding:16px;background:#ece9d8">
+<table cellpadding="0" cellspacing="0" border="0" width="100%" class="R"><tr><td class="T">Admin Panel</td></tr><tr><td class="mp" style="padding:16px">
   <div id="admin-stats" style="margin-bottom:8px;font-weight:bold"></div>
   <b>Set Badge:</b><br><input class="I" id="adm-bu" placeholder="username" style="width:100px"> <input class="I" id="adm-bb" placeholder="badge text" style="width:80px"> <input type="button" class="B Bs" value="Add" onclick="admBadge('add')"> <input type="button" class="B Bs" value="Remove" onclick="admBadge('remove')">
   <div id="adm-be" style="font-size:10px;min-height:14px"></div><hr style="border:1px groove #d4d0c8">
   <b>All Users:</b><div id="adm-users" class="sc" style="max-height:250px;margin:4px 0"></div>
+  <br><div align="right"><input type="button" class="B" value="Close" onclick="closeMod()"></div>
+</td></tr></table></div>
+<!-- User Directory -->
+<div class="mw" id="m-dir" style="margin-top:-200px;margin-left:-200px;width:400px">
+<table cellpadding="0" cellspacing="0" border="0" width="100%" class="R"><tr><td class="T">User Directory</td></tr><tr><td class="mp" style="padding:16px">
+  <input class="I" id="dir-q" style="width:100%" placeholder="Search users..." oninput="searchDirectory()">
+  <div style="margin:6px 0"><input type="button" class="B Bs" value="All" onclick="loadDirectory('')" style="margin-right:2px"><input type="button" class="B Bs" value="Online" onclick="loadDirectory('online')"><input type="button" class="B Bs" value="Offline" onclick="loadDirectory('offline')"></div>
+  <div id="dir-list" class="sc" style="max-height:300px"></div>
   <br><div align="right"><input type="button" class="B" value="Close" onclick="closeMod()"></div>
 </td></tr></table></div>
 <!-- Lightbox -->
@@ -418,7 +452,7 @@ function updUL(users){$('ol-c').innerHTML=users.length;var el=$('ul');el.innerHT
 function incU(ch){unread[ch]=(unread[ch]||0)+1;loadDMList()}function clrU(ch){unread[ch]=0}
 function showTyp(dn){$('typ').innerHTML=esc(dn)+' is typing...';clearTimeout(typTO);typTO=setTimeout(function(){$('typ').innerHTML=''},2000)}
 function notify(text){var el=$('ntf'),d=document.createElement('div');d.className='ni';d.innerHTML=esc(text);el.appendChild(d);setTimeout(function(){if(d.parentNode)d.parentNode.removeChild(d)},5000);d.onclick=function(){if(d.parentNode)d.parentNode.removeChild(d)};if(document.hidden)showDesktopNotif('JorgeChat',text)}
-function closeMod(){$('m-bg').style.display='none';var m=['m-cr','m-inv','m-ren','m-set','m-fr','m-prof','m-search','m-admin'];for(var i=0;i<m.length;i++)$(m[i]).style.display='none'}
+function closeMod(){$('m-bg').style.display='none';var m=['m-cr','m-inv','m-ren','m-set','m-fr','m-prof','m-search','m-admin','m-dir'];for(var i=0;i<m.length;i++)$(m[i]).style.display='none'}
 function showMod(id){$('m-bg').style.display='block';$(id).style.display='block'}
 function showCR(){showMod('m-cr');$('cr-n').focus()}
 $('cr-n').onkeydown=function(e){if(e.keyCode===13)doCreateRoom();if(e.keyCode===27)closeMod()};
@@ -461,6 +495,48 @@ $('srch-q').onkeydown=function(e){if(e.keyCode===13)doMsgSearch()};
 function openAdmin(){showMod('m-admin');api('/api/admin/stats',{token:myTk},function(d){if(d.error)return;$('admin-stats').innerHTML='Users: '+d.users+' | Messages: '+d.messages+' | Rooms: '+d.rooms+' | Online: '+d.online});api('/api/admin/users',{token:myTk},function(d){if(d.error)return;var el=$('adm-users');el.innerHTML='';for(var i=0;i<d.users.length;i++){var u=d.users[i],div=document.createElement('div');div.style.padding='2px 0';var on=u.online?'<span style="color:#0c0">&#9679;</span>':'<span style="color:gray">&#9675;</span>';var badges='';if(u.badges)for(var j=0;j<u.badges.length;j++)badges+=' <span class="badge-tag">'+esc(u.badges[j])+'</span>';div.innerHTML=on+' <span style="color:'+u.color+'"><b>'+esc(u.displayName)+'</b></span> ('+esc(u.username)+')'+badges+(u.isAdmin?' [ADMIN]':'')+' <input type="button" class="B Bs" value="Delete" onclick="admDel(\''+escA(u.username)+'\')">';el.appendChild(div)}})}
 function admBadge(action){var u=$('adm-bu').value,b=$('adm-bb').value;if(!u||!b)return;api('/api/admin/set-badge',{token:myTk,username:u,badge:b,action:action},function(d){$('adm-be').innerHTML=d.error?'<span style="color:#f00">'+esc(d.error)+'</span>':'<span style="color:green">Done! Badges: '+JSON.stringify(d.badges)+'</span>'})}
 function admDel(u){if(!confirm('Delete user '+u+'? Cannot undo.'))return;api('/api/admin/delete-user',{token:myTk,username:u},function(d){if(d.error)alert(d.error);else openAdmin()})}
+
+// User Directory
+function openDirectory(){showMod('m-dir');$('dir-q').value='';loadDirectory('')}
+var dirFilter='';
+function loadDirectory(filter){
+  dirFilter=filter;
+  apiGet('/api/search-users?q='+(($('dir-q')&&$('dir-q').value)||'  '),function(d){
+    // If search is empty/short, get all users via admin or search with wildcard
+    renderDirectory(d.users||[]);
+  });
+  // Better approach: fetch all users
+  api('/api/directory',{token:myTk},function(d){
+    if(d.users)renderDirectory(d.users);
+  });
+}
+function searchDirectory(){clearTimeout(gifSearchTO);gifSearchTO=setTimeout(function(){
+  var q=$('dir-q').value.trim();
+  if(q.length>=2){
+    apiGet('/api/search-users?q='+encodeURIComponent(q),function(d){renderDirectory(d.users||[])});
+  }else{
+    api('/api/directory',{token:myTk},function(d){if(d.users)renderDirectory(d.users)});
+  }
+},300)}
+function renderDirectory(users){
+  var el=$('dir-list');el.innerHTML='';
+  // Filter
+  var filtered=users;
+  if(dirFilter==='online')filtered=users.filter(function(u){return u.online});
+  if(dirFilter==='offline')filtered=users.filter(function(u){return!u.online});
+  if(!filtered.length){el.innerHTML='<span style="color:gray">No users found</span>';return}
+  for(var i=0;i<filtered.length;i++){
+    var u=filtered[i];var div=document.createElement('div');div.style.cssText='padding:4px 0;border-bottom:1px solid #ddd';
+    var on=u.online?'<span style="color:#0c0">&#9679; Online</span>':'<span style="color:gray">&#9675; Offline</span>';
+    var badges='';if(u.badges)for(var j=0;j<u.badges.length;j++)badges+=' <span class="badge-tag">'+esc(u.badges[j])+'</span>';
+    var tags='';if(u.tags)for(var j=0;j<u.tags.length;j++)tags+='<span class="tag tag-'+u.tags[j]+'">'+u.tags[j]+'</span>';
+    var pfp=u.pfp?'<img src="'+u.pfp+'" style="width:24px;height:24px;border:1px solid #ccc;object-fit:cover;vertical-align:middle;margin-right:4px">':'';
+    div.innerHTML=pfp+'<b style="color:'+u.color+';cursor:pointer" onclick="closeMod();viewProf(\''+escA(u.username)+'\')">'+esc(u.displayName)+'</b> <span style="color:gray">('+esc(u.username)+')</span>'+badges+tags+' '+on+
+      ' <input type="button" class="B Bs" value="DM" onclick="closeMod();openDM(\''+escA(u.username)+'\')">';
+    el.appendChild(div);
+  }
+}
+
 function openLB(u){$('lbi').src=u;$('lbg').style.display='block';$('lbc').style.display='block'}
 function closeLB(){$('lbg').style.display='none';$('lbc').style.display='none'}
 document.onkeydown=function(e){if(e.keyCode===27){closeLB();closeMod()}};
