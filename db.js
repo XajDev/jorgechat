@@ -1,38 +1,20 @@
-// ============================================================
-// db.js — PostgreSQL connection + table setup
-// ============================================================
-// Uses the DATABASE_URL env var that Railway auto-provides
-// when you add a Postgres database to your project.
-// All tables are created on startup if they don't exist (IF NOT EXISTS).
-// ============================================================
-
 const { Pool } = require('pg');
-
-// Railway gives you DATABASE_URL automatically when you add Postgres.
-// It looks like: postgresql://user:pass@host:port/dbname
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  // SSL required for Railway's Postgres
   ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false,
 });
 
-// Helper: run a query and return rows
 async function query(text, params) {
   const res = await pool.query(text, params);
   return res.rows;
 }
 
-// Helper: run a query and return the first row (or null)
 async function queryOne(text, params) {
   const rows = await query(text, params);
   return rows.length > 0 ? rows[0] : null;
 }
 
-// ============================================================
-// TABLE CREATION — runs once on startup
-// ============================================================
 async function initDB() {
-  // Accounts table — stores user credentials and profile info
   await pool.query(`
     CREATE TABLE IF NOT EXISTS accounts (
       username      TEXT PRIMARY KEY,
@@ -43,13 +25,23 @@ async function initDB() {
       bio           TEXT DEFAULT '',
       pfp           TEXT,
       tags          TEXT[] DEFAULT '{}',
+      badges        TEXT[] DEFAULT '{}',
+      theme         TEXT DEFAULT 'xp-blue',
       last_display_change BIGINT DEFAULT 0,
       last_seen     BIGINT DEFAULT 0,
-      created_at    BIGINT DEFAULT 0
+      created_at    BIGINT DEFAULT 0,
+      is_admin      BOOLEAN DEFAULT false
     )
   `);
 
-  // Friends — bidirectional, stored as two rows (a->b and b->a)
+  // Add columns if they don't exist (for existing databases)
+  const cols = [
+    ['accounts','badges',"ALTER TABLE accounts ADD COLUMN IF NOT EXISTS badges TEXT[] DEFAULT '{}'"],
+    ['accounts','theme',"ALTER TABLE accounts ADD COLUMN IF NOT EXISTS theme TEXT DEFAULT 'xp-blue'"],
+    ['accounts','is_admin',"ALTER TABLE accounts ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT false"],
+  ];
+  for (const c of cols) { try { await pool.query(c[2]); } catch(e) {} }
+
   await pool.query(`
     CREATE TABLE IF NOT EXISTS friends (
       user1 TEXT NOT NULL REFERENCES accounts(username),
@@ -59,7 +51,6 @@ async function initDB() {
     )
   `);
 
-  // Friend requests — one-directional
   await pool.query(`
     CREATE TABLE IF NOT EXISTS friend_requests (
       from_user TEXT NOT NULL REFERENCES accounts(username),
@@ -69,7 +60,6 @@ async function initDB() {
     )
   `);
 
-  // Rooms — chat rooms (public or private)
   await pool.query(`
     CREATE TABLE IF NOT EXISTS rooms (
       id          TEXT PRIMARY KEY,
@@ -81,7 +71,6 @@ async function initDB() {
     )
   `);
 
-  // Room members
   await pool.query(`
     CREATE TABLE IF NOT EXISTS room_members (
       room_id  TEXT NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
@@ -91,7 +80,6 @@ async function initDB() {
     )
   `);
 
-  // Room invites (for private rooms)
   await pool.query(`
     CREATE TABLE IF NOT EXISTS room_invites (
       room_id  TEXT NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
@@ -100,7 +88,6 @@ async function initDB() {
     )
   `);
 
-  // Room bans
   await pool.query(`
     CREATE TABLE IF NOT EXISTS room_bans (
       room_id  TEXT NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
@@ -109,9 +96,6 @@ async function initDB() {
     )
   `);
 
-  // Messages — covers public, DM, and room messages all in one table.
-  // channel_type: 'public', 'dm', 'room'
-  // channel_id: 'public', 'username1::username2' (sorted), or room_id
   await pool.query(`
     CREATE TABLE IF NOT EXISTS messages (
       id           TEXT PRIMARY KEY,
@@ -126,17 +110,15 @@ async function initDB() {
       edited       BOOLEAN DEFAULT false,
       deleted      BOOLEAN DEFAULT false,
       reactions    JSONB DEFAULT '{}',
+      pinned       BOOLEAN DEFAULT false,
       timestamp    BIGINT NOT NULL
     )
   `);
+  try { await pool.query("ALTER TABLE messages ADD COLUMN IF NOT EXISTS pinned BOOLEAN DEFAULT false"); } catch(e) {}
 
-  // Index for fast message lookups by channel
-  await pool.query(`
-    CREATE INDEX IF NOT EXISTS idx_messages_channel
-    ON messages (channel_type, channel_id, timestamp)
-  `);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_messages_channel ON messages (channel_type, channel_id, timestamp)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_messages_text ON messages USING gin(to_tsvector('english', text))`);
 
-  // Read receipts for DMs
   await pool.query(`
     CREATE TABLE IF NOT EXISTS read_receipts (
       username   TEXT NOT NULL REFERENCES accounts(username),
