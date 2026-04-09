@@ -2,18 +2,108 @@
 <html>
 <head>
 <meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
 <title>JorgeChat - jorgepompacarrera.net</title>
 <script src="/socket.io/socket.io.js"></script>
 <style>
 body{margin:0;padding:0;font-family:Tahoma,Verdana,Arial,sans-serif;font-size:11px;color:#000}
 a{color:#0000ff}a:hover{color:#f00}
-/* THEMES */
+/* THEMES - XP Blue is default, no overrides needed */
 body.xp-blue{background:#3a6ea5}
+/* XP Silver — full silver/gray UI */
 body.xp-silver{background:#7a96a8}
+body.xp-silver .R{border-color:#c0c0c0;background:#e8e8e8}
+body.xp-silver .S{border-color:#b0b0b0;background:#fff}
+body.xp-silver .T{background:#5a7a8a}
+body.xp-silver .T2{background:#8a9aaa}
+body.xp-silver .B{border-color:#b0b0b0;background:#e0e0e0}
+body.xp-silver .NV{background:#e0e0e0;border-color:#b0b0b0}
+body.xp-silver .NV a{color:#4a6a7a;border-color:#e0e0e0}
+body.xp-silver .NV a:hover{background:#c8c8c8;border-color:#b0b0b0}
+body.xp-silver .NV a.C{background:#fff;border-color:#b0b0b0}
+body.xp-silver .SB{background:#e0e0e0;border-color:#b0b0b0}
+body.xp-silver .si:hover{background:#5a7a8a}
+body.xp-silver .si.ac{background:#5a7a8a}
+body.xp-silver .tb{border-color:#b0b0b0;background:#d0d0d0}
+body.xp-silver .tb.on{background:#e8e8e8;border-bottom-color:#e8e8e8}
+body.xp-silver .stab{border-color:#b0b0b0}
+body.xp-silver .stab.on{background:#fff}
+body.xp-silver .ni{background:#f0f0e0;border-color:#b0b0b0}
+body.xp-silver .I{border-color:#b0b0b0}
+body.xp-silver .msg-acts span{border-color:#b0b0b0;background:#e0e0e0}
+body.xp-silver .cpick{border-color:#b0b0b0}
+/* XP Olive — warm olive/green UI */
 body.xp-olive{background:#7a8a5a}
-body.win98{background:#008080}
+body.xp-olive .R{border-color:#b0b898;background:#e8e8d8}
+body.xp-olive .S{border-color:#a0a890;background:#fafaf0}
+body.xp-olive .T{background:#5a6a3a}
+body.xp-olive .T2{background:#8a9a6a}
+body.xp-olive .B{border-color:#a0a890;background:#dde0c8}
+body.xp-olive .NV{background:#dde0c8;border-color:#a0a890}
+body.xp-olive .NV a{color:#4a5a2a;border-color:#dde0c8}
+body.xp-olive .NV a:hover{background:#c8ccb0;border-color:#a0a890}
+body.xp-olive .NV a.C{background:#fafaf0;border-color:#a0a890}
+body.xp-olive .SB{background:#dde0c8;border-color:#a0a890}
+body.xp-olive .si:hover{background:#5a6a3a}
+body.xp-olive .si.ac{background:#5a6a3a}
+body.xp-olive .tb{border-color:#a0a890;background:#ccd0b8}
+body.xp-olive .tb.on{background:#e8e8d8;border-bottom-color:#e8e8d8}
+body.xp-olive .stab{border-color:#a0a890}
+body.xp-olive .stab.on{background:#fafaf0}
+body.xp-olive .ni{background:#f0f0d8;border-color:#a0a890}
+body.xp-olive .I{border-color:#a0a890}
+body.xp-olive .msg-acts span{border-color:#a0a890;background:#dde0c8}
+body.xp-olive .cpick{border-color:#a0a890}
+/* Dark theme — full dark overrides for everything */
 body.dark{background:#1a1a2e;color:#c0c0c0}
-.R{border:2px outset #d4d0c8;background:#ece9d8}
+body.dark a{color:#6688cc}
+body.dark .R{border-color:#444;background:#2a2a3e}
+body.dark .S{border-color:#444;background:#1a1a2e;color:#c0c0c0}
+body.dark .T{background:#1a1a3e;color:#c0c0e0}
+body.dark .T2{background:#2a2a4e;color:#a0a0c0}
+body.dark .B{border-color:#444;background:#2a2a3e;color:#c0c0c0}
+body.dark .B:disabled{color:#555}
+body.dark .Bs{color:#c0c0c0}
+body.dark .I{border-color:#444;background:#1a1a2e;color:#c0c0c0}
+body.dark .NV{background:#2a2a3e;border-color:#444}
+body.dark .NV a{color:#8080cc;border-color:#2a2a3e}
+body.dark .NV a:hover{background:#3a3a5e;border-color:#444;color:#aaa}
+body.dark .NV a.C{background:#1a1a2e;border-color:#444;color:#c0c0e0}
+body.dark .SB{background:#2a2a3e;border-color:#444;color:#888}
+body.dark .si{color:#c0c0c0}
+body.dark .si:hover{background:#4040aa;color:#fff}
+body.dark .si.ac{background:#4040aa;color:#fff}
+body.dark .tb{border-color:#444;background:#2a2a3e;color:#aaa}
+body.dark .tb.on{background:#2a2a3e;border-bottom-color:#2a2a3e;color:#c0c0e0}
+body.dark .stab{border-color:#444;color:#aaa}
+body.dark .stab:hover{background:#3a3a5e}
+body.dark .stab.on{background:#1a1a2e;border-bottom-color:#1a1a2e;color:#c0c0e0}
+body.dark .mo{background:#000;opacity:.7}
+body.dark .msg-row:hover{background:#2a2a4e}
+body.dark .msg-acts span{border-color:#444;background:#2a2a3e;color:#aaa}
+body.dark .msg-acts span:hover{background:#3a3a5e}
+body.dark .ni{background:#2a2a3e;border-color:#444;color:#c0c0c0}
+body.dark .ni:hover{background:#3a3a5e}
+body.dark .date-sep{border-color:#333;color:#666}
+body.dark .msg-pinned{background:#2a2a30;border-color:#886}
+body.dark .react-picker{background:#2a2a3e;border-color:#444;color:#c0c0c0}
+body.dark .react-picker span:hover{background:#3a3a5e}
+body.dark .msg-reactions span{border-color:#444;background:#2a2a3e;color:#c0c0c0}
+body.dark .msg-reactions span:hover{background:#3a3a5e}
+body.dark .msg-reactions span.my-react{border-color:#6060aa;background:#3a3a6e}
+body.dark .edit-box{border-color:#444;background:#1a1a2e;color:#c0c0c0}
+body.dark .pb{background:#2a2a30;border-color:#444;color:#c0c0c0}
+body.dark .badge-tag{background:#2a2a3e;border-color:#555;color:#aaa}
+body.dark .msg-edited{color:#666}
+body.dark .msg-action{color:#8080aa}
+body.dark .mention-hl{background:#4a4a20}
+body.dark .link{color:#6688cc}
+body.dark .fp img{border-color:#444}
+body.dark .pfp{border-color:#444}
+body.dark .cpick{border-color:#444}
+body.dark .cpick:hover{border-color:#666}
+body.dark select.I{background:#1a1a2e;color:#c0c0c0;border-color:#444}
+body.dark textarea.I{background:#1a1a2e;color:#c0c0c0;border-color:#444}.R{border:2px outset #d4d0c8;background:#ece9d8}
 .S{border:2px inset #d4d0c8;background:#fff}
 .T{background:#0a246a;color:#fff;font-weight:bold;font-size:11px;padding:3px 6px}
 .T2{background:#7f9db9;color:#d4d0c8;font-weight:bold;font-size:11px;padding:3px 6px}
@@ -71,26 +161,6 @@ body.dark{background:#1a1a2e;color:#c0c0c0}
 .mention-hl{background:#ffffaa;font-weight:bold;padding:0 2px}
 .link{color:#0000ff;text-decoration:underline;cursor:pointer}
 .date-sep{text-align:center;color:gray;font-size:10px;padding:4px 0;border-bottom:1px solid #e0e0e0;margin:4px 0}
-/* Dark theme overrides */
-body.dark .R{border-color:#444;background:#2a2a3e}
-body.dark .S{border-color:#444;background:#1a1a2e}
-body.dark .T{background:#1a1a3e}
-body.dark .T2{background:#2a2a4e}
-body.dark .B{border-color:#444;background:#2a2a3e;color:#c0c0c0}
-body.dark .I{border-color:#444;background:#1a1a2e;color:#c0c0c0}
-body.dark .NV{background:#2a2a3e;border-color:#444}
-body.dark .NV a{color:#8080cc;border-color:#2a2a3e}
-body.dark .SB{background:#2a2a3e;border-color:#444;color:#888}
-body.dark .si:hover{background:#4040aa}
-body.dark .si.ac{background:#4040aa}
-body.dark .msg-row:hover{background:#2a2a4e}
-body.dark .msg-acts span{border-color:#444;background:#2a2a3e;color:#aaa}
-body.dark .ni{background:#2a2a3e;border-color:#444;color:#c0c0c0}
-body.dark .date-sep{border-color:#333;color:#666}
-body.dark .msg-pinned{background:#2a2a30;border-color:#886}
-/* Win98 theme overrides */
-body.win98 .T{background:#000080}
-body.win98 .T2{background:#808080}
 </style>
 </head>
 <body class="xp-blue">
@@ -183,7 +253,7 @@ body.win98 .T2{background:#808080}
   </td></tr>
   <tr><td class="R" style="padding:4px">
     <table width="100%" cellpadding="0" cellspacing="2" border="0"><tr>
-      <td><input class="I" id="mi" style="width:100%" placeholder="Type a message... (/shrug /tableflip /me)" autocomplete="off"></td>
+      <td><input class="I" id="mi" style="width:100%" placeholder="Type a message... (@here @everyone /shrug /me)" autocomplete="off"></td>
       <td width="40"><input type="button" class="B Bs" value="Add +" onclick="document.getElementById('fi').click()" title="Attach file"><input type="file" id="fi" style="display:none"></td>
       <td width="50"><input type="button" class="B" id="sb" value="Send"></td>
     </tr></table>
@@ -237,8 +307,8 @@ body.win98 .T2{background:#808080}
   <div id="set-color" style="display:none"><b>Name Color:</b><br><div id="color-grid"></div><br>Custom: <input class="I" id="s-col" maxlength="7" style="width:80px" placeholder="#FF0000"> <input type="button" class="B" value="Set" onclick="saveColor()"><div id="s-col-e" style="font-size:10px;min-height:14px"></div></div>
   <div id="set-prof" style="display:none"><b>Profile Picture:</b><br><img id="s-pfp" class="pfp" src="" style="display:none"><br><input type="file" id="s-pfp-f" accept="image/*" style="margin:4px 0"> <input type="button" class="B" value="Upload" onclick="uploadPfp()"><br><br><b>Bio:</b><br><textarea class="I" id="s-bio" style="width:100%;height:60px" maxlength="500"></textarea><br><input type="button" class="B" value="Save Bio" onclick="saveBio()"><div id="s-bio-e" style="font-size:10px;min-height:14px"></div></div>
   <div id="set-tag" style="display:none"><b>Status:</b><br><select class="I" id="s-tag" style="width:150px"><option value="">None</option><option value="away">Away</option><option value="busy">Busy</option><option value="dnd">Do Not Disturb</option><option value="unavailable">Unavailable</option></select> <input type="button" class="B" value="Set" onclick="saveTag()"></div>
-  <div id="set-theme" style="display:none"><b>Theme:</b><br><select class="I" id="s-theme" style="width:180px"><option value="xp-blue">Windows XP Blue</option><option value="xp-silver">Windows XP Silver</option><option value="xp-olive">Windows XP Olive</option><option value="win98">Windows 98</option><option value="dark">Dark Mode</option></select> <input type="button" class="B" value="Apply" onclick="saveTheme()"></div>
-  <div id="set-sound" style="display:none"><b>Sound Notifications:</b><br><input type="checkbox" id="s-snd" checked> <label for="s-snd">Enable sounds</label><br><br><input type="button" class="B" value="Test Sound" onclick="playSound('msg')"></div>
+  <div id="set-theme" style="display:none"><b>Theme:</b><br><select class="I" id="s-theme" style="width:180px"><option value="xp-blue">Windows XP Blue</option><option value="xp-silver">Windows XP Silver</option><option value="xp-olive">Windows XP Olive</option><option value="dark">Dark Mode</option></select> <input type="button" class="B" value="Apply" onclick="saveTheme()"></div>
+  <div id="set-sound" style="display:none"><b>Sound Notifications:</b><br><input type="checkbox" id="s-snd" checked> <label for="s-snd">Enable sounds</label><br><br><input type="button" class="B" value="Test Sound" onclick="playSound('msg')"><br><br><b>Desktop Notifications:</b><br><input type="button" class="B" value="Enable Desktop Notifications" onclick="requestDesktopNotif();alert(Notification.permission==='granted'?'Enabled!':'Check your browser permissions')"><br><span style="font-size:9px;color:gray">Shows a popup when you get a message while the tab is in the background</span></div>
   <br><div align="right"><input type="button" class="B" value="Close" onclick="closeMod()"></div>
 </td></tr></table></div>
 <!-- Friends -->
@@ -285,7 +355,11 @@ var audioCtx=null;
 function initAudio(){if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)()}
 function playSound(type){if(!soundOn)return;initAudio();if(!audioCtx)return;var now=audioCtx.currentTime;if(type==='msg'){playTone(660,0.08,0.15,'sine',now);playTone(880,0.06,0.12,'triangle',now+0.08)}else if(type==='dm'){playTone(523,0.07,0.12,'sine',now);playTone(659,0.07,0.12,'sine',now+0.1);playTone(784,0.08,0.15,'triangle',now+0.2)}else if(type==='join'){playTone(440,0.05,0.1,'sine',now);playTone(554,0.05,0.1,'triangle',now+0.06)}else if(type==='leave'){playTone(554,0.05,0.1,'sine',now);playTone(440,0.05,0.1,'triangle',now+0.06)}else if(type==='mention'){playTone(880,0.06,0.1,'sine',now);playTone(1100,0.04,0.08,'sine',now+0.06);playTone(880,0.06,0.1,'triangle',now+0.12);playTone(1100,0.05,0.12,'sine',now+0.18)}}
 function playTone(freq,vol,dur,w,st){var o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type=w||'sine';o.frequency.value=freq;g.gain.setValueAtTime(0,st);g.gain.linearRampToValueAtTime(vol,st+0.01);g.gain.exponentialRampToValueAtTime(0.001,st+dur);o.connect(g);g.connect(audioCtx.destination);o.start(st);o.stop(st+dur+0.05)}
-function processText(t){if(!t)return'';var h=esc(t);h=h.replace(/(https?:\/\/[^\s<]+)/g,'<a href="$1" target="_blank" class="link">$1</a>');h=h.replace(/@([a-zA-Z0-9_]+)/g,function(m,u){return'<span class="mention-hl'+(u.toLowerCase()===myU?'" style="background:#ffcc00':'')+'">@'+u+'</span>'});return h}
+function processText(t){if(!t)return'';var h=esc(t);h=h.replace(/(https?:\/\/[^\s<]+)/g,'<a href="$1" target="_blank" class="link">$1</a>');h=h.replace(/@(everyone|here|online|room|friends)/gi,function(m){return'<span class="mention-hl" style="background:#ffaa00;color:#000">'+m+'</span>'});h=h.replace(/@([a-zA-Z0-9_]+)/g,function(m,u){if(['everyone','here','online','room','friends'].indexOf(u.toLowerCase())>=0)return m;return'<span class="mention-hl'+(u.toLowerCase()===myU?'" style="background:#ffcc00':'')+'">@'+u+'</span>'});return h}
+// Desktop notifications
+var desktopNotifEnabled=false;
+function requestDesktopNotif(){if(!('Notification' in window))return;if(Notification.permission==='granted'){desktopNotifEnabled=true}else if(Notification.permission!=='denied'){Notification.requestPermission().then(function(p){desktopNotifEnabled=p==='granted'})}}
+function showDesktopNotif(title,body){if(!desktopNotifEnabled)return;try{var n=new Notification(title,{body:body,icon:'/favicon.ico',tag:'jorgechat-'+Date.now()});setTimeout(function(){n.close()},5000);n.onclick=function(){window.focus();n.close()}}catch(e){}}
 function getDateStr(ts){var d=new Date(ts),today=new Date(),y=new Date(today);y.setDate(y.getDate()-1);if(d.toDateString()===today.toDateString())return'Today';if(d.toDateString()===y.toDateString())return'Yesterday';return d.toLocaleDateString()}
 function maybeShowDate(ts){var ds=getDateStr(ts);if(ds!==lastDateShown){lastDateShown=ds;var div=document.createElement('div');div.className='date-sep';div.innerHTML='— '+ds+' —';$('msgs').appendChild(div)}}
 function swT(t){$('f-li').style.display=t==='li'?'':'none';$('f-re').style.display=t==='re'?'':'none';$('t-li').className='tb'+(t==='li'?' on':'');$('t-re').className='tb'+(t==='re'?' on':'');if(t==='li')try{$('li-u').focus()}catch(e){}if(t==='re')try{$('re-u').focus()}catch(e){}}
@@ -297,7 +371,7 @@ $('li-u').onkeydown=$('li-p').onkeydown=function(e){if(e.keyCode===13)$('li-b').
 $('re-b').onclick=function(){var u=$('re-u').value,d=$('re-d').value,p=$('re-p').value;if(!u||!d||!p){$('re-e').innerHTML='Fill in all fields';return}$('re-e').innerHTML='Creating...';$('re-b').disabled=true;api('/api/register',{username:u,displayName:d,password:p},function(r){$('re-b').disabled=false;if(r.error)$('re-e').innerHTML=esc(r.error);else{myU=r.username;myDN=r.displayName;myCol=r.color;myTk=r.token;localStorage.setItem('jc_token',myTk);enter()}})};
 $('re-u').onkeydown=$('re-d').onkeydown=$('re-p').onkeydown=function(e){if(e.keyCode===13)$('re-b').onclick()};
 function doLogout(){localStorage.removeItem('jc_token');if(sk)sk.disconnect();location.reload()}
-function enter(){$('auth').style.display='none';$('chat').style.display='block';$('my-dn').innerHTML=esc(myDN);document.body.className=myTheme;if(myAdmin)$('admin-btn').style.display='';sk=io({transports:['websocket','polling'],upgrade:true,rememberUpgrade:true});sk.on('connect',function(){sk.emit('join',{token:myTk})});sk.on('joined',function(d){updUL(d.onlineUsers);updRL(d.rooms);loadDMList();$('mi').focus();$('sbt').innerHTML='Connected as '+esc(myDN);if(d.friendRequests>0)notify(d.friendRequests+' friend request(s)');initAudio()});sk.on('join-error',function(e){alert(e);doLogout()});sk.on('force-logout',function(){doLogout()});setupSk()}
+function enter(){$('auth').style.display='none';$('chat').style.display='block';$('my-dn').innerHTML=esc(myDN);document.body.className=myTheme;if(myAdmin)$('admin-btn').style.display='';sk=io({transports:['websocket','polling'],upgrade:true,rememberUpgrade:true,secure:true});sk.on('connect',function(){sk.emit('join',{token:myTk})});sk.on('joined',function(d){updUL(d.onlineUsers);updRL(d.rooms);loadDMList();$('mi').focus();$('sbt').innerHTML='Connected as '+esc(myDN);if(d.friendRequests>0)notify(d.friendRequests+' friend request(s)');initAudio();requestDesktopNotif()});sk.on('join-error',function(e){alert(e);doLogout()});sk.on('force-logout',function(){doLogout()});setupSk()}
 function setupSk(){
   sk.on('public-message',function(m){if(m.type==='system'){if(m.text&&m.text.indexOf('entered')>0)playSound('join');if(m.text&&m.text.indexOf('left')>0)playSound('leave')}if(curCh==='public'&&curTy==='public'){rMsg(m);scr()}else{incU('public');if(m.type!=='system')playSound('msg')}});
   sk.on('dm',function(m){var other=m.from===myU?m.to:m.from;var k='dm:'+other;if(curCh===k&&curTy==='dm'){rMsg(m);scr()}else{incU(k);playSound('dm');notify('DM from '+(m.fromDisplay||m.from))}loadDMList()});
@@ -334,7 +408,7 @@ function emitM(t,f){if(curTy==='public')sk.emit('public-message',{text:t,file:f}
 $('fi').onchange=function(){var f=$('fi').files[0];if(!f)return;if(f.size>50*1024*1024){alert('Max 50MB');$('fi').value='';return}pendF=f;$('pfn').innerHTML=esc(f.name)+' ('+fmtS(f.size)+')';$('pf').style.display='block';$('fi').value=''};
 function clrPF(){pendF=null;$('pf').style.display='none';$('pfn').innerHTML=''}
 function uplF(f,cb){var fd=new FormData();fd.append('file',f);$('sbt').innerHTML='Uploading...';var x=new XMLHttpRequest();x.onload=function(){if(x.status===200){$('sbt').innerHTML='Done';cb(JSON.parse(x.responseText))}else{$('sbt').innerHTML='Failed';cb(null)}};x.onerror=function(){$('sbt').innerHTML='Error';cb(null)};x.open('POST','/upload');x.send(fd)}
-function swCh(ch){curCh=ch;curTy='public';$('ch-t').innerHTML='# public';$('ch-i').innerHTML='Main chat room';$('msgs').innerHTML='';lastDateShown='';clrU('public');updAct();$('mi').placeholder='Type a message... (/shrug /tableflip /me)';$('ch-actions').innerHTML='';$('mi').focus()}
+function swCh(ch){curCh=ch;curTy='public';$('ch-t').innerHTML='# public';$('ch-i').innerHTML='Main chat room';$('msgs').innerHTML='';lastDateShown='';clrU('public');updAct();$('mi').placeholder='Type a message... (@here @everyone /shrug /me)';$('ch-actions').innerHTML='';$('mi').focus()}
 function openDM(un){if(un===myU)return;var k='dm:'+un;curCh=k;curTy='dm';$('ch-t').innerHTML='DM: '+esc(un);$('ch-i').innerHTML='Private conversation';$('msgs').innerHTML='';lastDateShown='';clrU(k);updAct();$('ch-actions').innerHTML='<input type="button" class="B Bs" value="Pinned" onclick="showPinned()">';sk.emit('dm-history',un);$('mi').placeholder='Message '+un+'...';$('mi').focus()}
 function swRoom(id,name){var k='room:'+id;curCh=k;curTy='room';$('ch-t').innerHTML='# '+esc(name);$('ch-i').innerHTML='Room';$('msgs').innerHTML='';lastDateShown='';clrU(k);updAct();sk.emit('join-room',id);$('mi').placeholder='Message #'+name+'...';$('mi').focus()}
 function updAct(){var p=$('ch-pub');if(p)p.className='si'+(curTy==='public'?' ac':'')}
@@ -343,7 +417,7 @@ function updRL(rooms){var el=$('rm-list');el.innerHTML='';for(var i=0;i<rooms.le
 function updUL(users){$('ol-c').innerHTML=users.length;var el=$('ul');el.innerHTML='';for(var i=0;i<users.length;i++){var u=users[i];if(u.username===myU)continue;var div=document.createElement('div');div.className='si'+(curCh===('dm:'+u.username)?' ac':'');var tags='',badges='';if(u.tags)for(var j=0;j<u.tags.length;j++)tags+='<span class="tag tag-'+u.tags[j]+'">'+u.tags[j]+'</span>';if(u.badges)for(var j=0;j<u.badges.length;j++)badges+='<span class="badge-tag">'+esc(u.badges[j])+'</span>';div.innerHTML='<span style="color:#0c0">&#9679;</span> <span style="color:'+u.color+'">'+esc(u.displayName)+'</span>'+tags+badges;div.onclick=(function(un){return function(){openDM(un)}})(u.username);el.appendChild(div)}}
 function incU(ch){unread[ch]=(unread[ch]||0)+1;loadDMList()}function clrU(ch){unread[ch]=0}
 function showTyp(dn){$('typ').innerHTML=esc(dn)+' is typing...';clearTimeout(typTO);typTO=setTimeout(function(){$('typ').innerHTML=''},2000)}
-function notify(text){var el=$('ntf'),d=document.createElement('div');d.className='ni';d.innerHTML=esc(text);el.appendChild(d);setTimeout(function(){if(d.parentNode)d.parentNode.removeChild(d)},5000);d.onclick=function(){if(d.parentNode)d.parentNode.removeChild(d)}}
+function notify(text){var el=$('ntf'),d=document.createElement('div');d.className='ni';d.innerHTML=esc(text);el.appendChild(d);setTimeout(function(){if(d.parentNode)d.parentNode.removeChild(d)},5000);d.onclick=function(){if(d.parentNode)d.parentNode.removeChild(d)};if(document.hidden)showDesktopNotif('JorgeChat',text)}
 function closeMod(){$('m-bg').style.display='none';var m=['m-cr','m-inv','m-ren','m-set','m-fr','m-prof','m-search','m-admin'];for(var i=0;i<m.length;i++)$(m[i]).style.display='none'}
 function showMod(id){$('m-bg').style.display='block';$(id).style.display='block'}
 function showCR(){showMod('m-cr');$('cr-n').focus()}
