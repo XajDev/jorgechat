@@ -5,767 +5,718 @@
   <title>JorgeChat - jorgepompacarrera.net</title>
   <script src="/socket.io/socket.io.js"></script>
   <style>
-    body {
-      margin: 0; padding: 0;
-      font-family: Tahoma, Verdana, Arial, sans-serif;
-      font-size: 11px;
-      background-color: #3a6ea5;
-      color: #000000;
-    }
-    a { color: #0000ff; }
-    a:visited { color: #551a8b; }
-    a:hover { color: #ff0000; }
-    .panel-raised { border: 2px outset #d4d0c8; background-color: #ece9d8; }
-    .panel-sunken { border: 2px inset #d4d0c8; background-color: #ffffff; }
-    .titlebar { background-color: #0a246a; color: #ffffff; font-weight: bold; font-size: 11px; padding: 3px 6px; }
-    .titlebar-inactive { background-color: #7f9db9; color: #d4d0c8; font-weight: bold; font-size: 11px; padding: 3px 6px; }
-    .btn {
-      font-family: Tahoma, Verdana, Arial, sans-serif; font-size: 11px;
-      border: 2px outset #d4d0c8; background-color: #ece9d8;
-      padding: 2px 12px; cursor: pointer; color: #000000;
-    }
-    .btn:active { border-style: inset; }
-    .btn:disabled { color: #808080; }
-    .text-input {
-      font-family: Tahoma, Verdana, Arial, sans-serif; font-size: 11px;
-      border: 2px inset #d4d0c8; padding: 2px 4px;
-      background-color: #ffffff; color: #000000;
-    }
-    .scroll-area { overflow-y: auto; overflow-x: hidden; }
-    .statusbar { border-top: 2px groove #d4d0c8; background-color: #ece9d8; padding: 2px 6px; font-size: 10px; color: #444444; }
-    .navbar { background-color: #ece9d8; border-bottom: 2px groove #d4d0c8; padding: 2px 4px; }
-    .navbar a { font-size: 11px; color: #0a246a; text-decoration: none; padding: 2px 8px; border: 1px solid #ece9d8; }
-    .navbar a:hover { border: 1px outset #d4d0c8; background-color: #d4d0c8; color: #000000; }
-    .navbar a.current { border: 1px inset #d4d0c8; background-color: #ffffff; font-weight: bold; }
-    .msg-time { color: #808080; font-size: 10px; }
-    .msg-system { color: #808080; font-style: italic; font-size: 10px; padding: 1px 0; }
-    .msg-text { font-size: 11px; word-wrap: break-word; }
-    .msg-user { font-weight: bold; cursor: pointer; }
-    .msg-user:hover { text-decoration: underline; }
-    .sidebar-item { padding: 2px 6px; cursor: pointer; font-size: 11px; white-space: nowrap; }
-    .sidebar-item:hover { background-color: #316ac5; color: #ffffff; }
-    .sidebar-item-active { background-color: #316ac5; color: #ffffff; }
-    .badge { background-color: #ff0000; color: #ffffff; font-size: 9px; font-weight: bold; padding: 0 3px; }
-    .file-preview img { border: 1px solid #808080; max-width: 300px; max-height: 200px; cursor: pointer; }
-    .modal-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: #000000; filter: alpha(opacity=50); opacity: 0.5; z-index: 100; display: none; }
-    .modal-window { position: fixed; top: 50%; left: 50%; margin-top: -80px; margin-left: -150px; width: 300px; z-index: 101; display: none; }
-    .lightbox-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: #000000; filter: alpha(opacity=80); opacity: 0.8; z-index: 200; display: none; }
-    .lightbox-content { position: fixed; top: 50%; left: 50%; margin-left: -350px; margin-top: -250px; z-index: 201; display: none; text-align: center; }
-    .lightbox-content img { border: 3px outset #d4d0c8; max-width: 700px; max-height: 500px; }
-    .pending-bar { background-color: #ffffcc; border: 1px solid #cccc99; padding: 2px 6px; font-size: 10px; display: none; }
-    .tab-btn { font-family: Tahoma, Verdana, Arial, sans-serif; font-size: 11px; border: 2px outset #d4d0c8; border-bottom: none; background-color: #d4d0c8; padding: 3px 14px; cursor: pointer; color: #000000; position: relative; top: 2px; }
-    .tab-btn.active-tab { background-color: #ece9d8; border-bottom: 2px solid #ece9d8; font-weight: bold; }
-    .field-row { padding: 3px 0; }
-    .field-label { display: inline-block; width: 100px; text-align: right; padding-right: 6px; }
+    body{margin:0;padding:0;font-family:Tahoma,Verdana,Arial,sans-serif;font-size:11px;background:#3a6ea5;color:#000}
+    a{color:#0000ff}a:hover{color:#f00}
+    .R{border:2px outset #d4d0c8;background:#ece9d8}
+    .S{border:2px inset #d4d0c8;background:#fff}
+    .T{background:#0a246a;color:#fff;font-weight:bold;font-size:11px;padding:3px 6px}
+    .T2{background:#7f9db9;color:#d4d0c8;font-weight:bold;font-size:11px;padding:3px 6px}
+    .B{font-family:Tahoma,Verdana,sans-serif;font-size:11px;border:2px outset #d4d0c8;background:#ece9d8;padding:2px 12px;cursor:pointer;color:#000}
+    .B:active{border-style:inset}.B:disabled{color:gray}
+    .Bs{font-size:10px;padding:1px 6px}
+    .I{font-family:Tahoma,Verdana,sans-serif;font-size:11px;border:2px inset #d4d0c8;padding:2px 4px;background:#fff;color:#000}
+    .SB{border-top:2px groove #d4d0c8;background:#ece9d8;padding:2px 6px;font-size:10px;color:#444}
+    .NV{background:#ece9d8;border-bottom:2px groove #d4d0c8;padding:2px 4px}
+    .NV a{font-size:11px;color:#0a246a;text-decoration:none;padding:2px 8px;border:1px solid #ece9d8}
+    .NV a:hover{border:1px outset #d4d0c8;background:#d4d0c8;color:#000}
+    .NV a.C{border:1px inset #d4d0c8;background:#fff;font-weight:bold}
+    .si{padding:2px 6px;cursor:pointer;font-size:11px;white-space:nowrap}
+    .si:hover{background:#316ac5;color:#fff}
+    .si.ac{background:#316ac5;color:#fff}
+    .bg{background:#ff0000;color:#fff;font-size:9px;font-weight:bold;padding:0 3px;margin-left:3px}
+    .sc{overflow-y:auto;overflow-x:hidden}
+    .fp img{border:1px solid gray;max-width:300px;max-height:200px;cursor:pointer}
+    .mo{position:fixed;top:0;left:0;width:100%;height:100%;background:#000;opacity:.5;z-index:100;display:none}
+    .mw{position:fixed;top:50%;left:50%;z-index:101;display:none}
+    .lb{position:fixed;top:0;left:0;width:100%;height:100%;background:#000;opacity:.8;z-index:200;display:none}
+    .lc{position:fixed;top:50%;left:50%;margin-left:-350px;margin-top:-250px;z-index:201;display:none;text-align:center}
+    .lc img{border:3px outset #d4d0c8;max-width:700px;max-height:500px}
+    .pb{background:#ffffcc;border:1px solid #cccc99;padding:2px 6px;font-size:10px;display:none}
+    .tb{font-family:Tahoma,Verdana,sans-serif;font-size:11px;border:2px outset #d4d0c8;border-bottom:none;background:#d4d0c8;padding:3px 14px;cursor:pointer;color:#000;position:relative;top:2px}
+    .tb.on{background:#ece9d8;border-bottom:2px solid #ece9d8;font-weight:bold}
+    .nt{position:fixed;top:40px;right:10px;z-index:300}
+    .ni{background:#ffffcc;border:2px outset #d4d0c8;padding:6px 10px;margin-bottom:4px;font-size:11px;cursor:pointer;max-width:250px}
+    .ni:hover{background:#ffffa0}
+    .pfp{width:80px;height:80px;border:2px inset #d4d0c8;object-fit:cover}
+    .tag{display:inline-block;font-size:9px;padding:1px 4px;font-weight:bold;margin-left:4px;color:#fff}
+    .tag-unavailable{background:#666}.tag-busy{background:#c00}.tag-away{background:#c60}.tag-dnd{background:#900}
+    .cpick{width:18px;height:18px;border:2px inset #d4d0c8;cursor:pointer;display:inline-block;margin:1px}
+    .cpick:hover{border:2px outset #d4d0c8}
+    .cpick.sel{border:2px solid #000}
+    .stab{display:inline-block;padding:3px 10px;cursor:pointer;border:1px solid #d4d0c8;margin-right:2px;font-size:11px}
+    .stab:hover{background:#d4d0c8}.stab.on{background:#fff;border-bottom:1px solid #fff;font-weight:bold}
   </style>
 </head>
 <body>
+<div class="nt" id="ntf"></div>
 
-<!-- ============================================================
-     AUTH SCREEN — login + register with tabs
-     ============================================================ -->
-<div id="auth-screen">
-  <table width="100%" height="100%" cellpadding="0" cellspacing="0" border="0">
-    <tr><td align="center" valign="middle">
-      <table cellpadding="0" cellspacing="0" border="0" width="380">
-        <!-- Title -->
-        <tr><td align="center" style="padding-bottom: 12px;">
-          <b style="font-size: 16px; color: #ffffff;">JorgeChat</b><br>
-          <span style="font-size: 10px; color: #c0c0c0;">jorgepompacarrera.net</span>
-        </td></tr>
-        <!-- Tabs -->
-        <tr><td style="padding-left: 4px;">
-          <span class="tab-btn active-tab" id="tab-login" onclick="switchTab('login')">Sign In</span>
-          <span class="tab-btn" id="tab-register" onclick="switchTab('register')">Register</span>
-        </td></tr>
-        <!-- Login form -->
-        <tr><td>
-          <table cellpadding="0" cellspacing="0" border="0" width="100%" class="panel-raised" id="form-login">
-            <tr><td class="titlebar">Sign In to JorgeChat</td></tr>
-            <tr><td style="padding: 16px; background-color: #ece9d8;">
-              <div class="field-row">
-                <span class="field-label">Username:</span>
-                <input type="text" class="text-input" id="login-user" style="width: 200px;" maxlength="24" autocomplete="off">
-              </div>
-              <div class="field-row">
-                <span class="field-label">Password:</span>
-                <input type="password" class="text-input" id="login-pass" style="width: 200px;" maxlength="64">
-              </div>
-              <div style="padding: 8px 0 0 106px;">
-                <input type="button" class="btn" id="login-btn" value="Sign In >>">
-              </div>
-              <div id="login-error" style="color: #ff0000; font-size: 10px; min-height: 14px; padding: 4px 0 0 106px;"></div>
-            </td></tr>
-          </table>
-          <!-- Register form (hidden by default) -->
-          <table cellpadding="0" cellspacing="0" border="0" width="100%" class="panel-raised" id="form-register" style="display: none;">
-            <tr><td class="titlebar">Create Account</td></tr>
-            <tr><td style="padding: 16px; background-color: #ece9d8;">
-              <div class="field-row">
-                <span class="field-label">Username:</span>
-                <input type="text" class="text-input" id="reg-user" style="width: 200px;" maxlength="24" autocomplete="off">
-              </div>
-              <div class="field-row">
-                <span class="field-label">Display Name:</span>
-                <input type="text" class="text-input" id="reg-display" style="width: 200px;" maxlength="24" autocomplete="off">
-              </div>
-              <div class="field-row">
-                <span class="field-label">Password:</span>
-                <input type="password" class="text-input" id="reg-pass" style="width: 200px;" maxlength="64">
-              </div>
-              <div style="padding: 8px 0 0 106px;">
-                <input type="button" class="btn" id="reg-btn" value="Create Account >>">
-              </div>
-              <div id="reg-error" style="color: #ff0000; font-size: 10px; min-height: 14px; padding: 4px 0 0 106px;"></div>
-              <div style="font-size: 10px; color: #808080; padding: 6px 0 0 106px;">
-                Username: letters, numbers, underscores<br>
-                Display Name: whatever you want
-              </div>
-            </td></tr>
-          </table>
-        </td></tr>
-        <tr><td align="center" style="padding-top: 8px;">
-          <span style="font-size: 9px; color: #c0c0c0;">v2.0 &mdash; Socket.IO Retro Chat</span>
-        </td></tr>
-      </table>
-    </td></tr>
-  </table>
+<!-- AUTH -->
+<div id="auth">
+<table width="100%" height="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" valign="middle">
+<table cellpadding="0" cellspacing="0" border="0" width="380">
+<tr><td align="center" style="padding-bottom:16px">
+  <b style="font-size:18px;color:#fff">JorgeChat</b><br>
+  <span style="font-size:10px;color:#c0c0c0">jorgepompacarrera.net</span>
+</td></tr>
+<tr><td style="padding-left:4px">
+  <span class="tb on" id="t-li" onclick="swT('li')">Sign In</span>
+  <span class="tb" id="t-re" onclick="swT('re')">Register</span>
+</td></tr>
+<tr><td>
+  <!-- Login -->
+  <div id="f-li" class="R">
+    <div class="T">Sign In</div>
+    <div style="padding:20px;background:#ece9d8">
+      <table cellspacing="4"><tr><td align="right">Username:</td><td><input class="I" id="li-u" style="width:200px" maxlength="24"></td></tr>
+      <tr><td align="right">Password:</td><td><input type="password" class="I" id="li-p" style="width:200px" maxlength="64"></td></tr>
+      <tr><td></td><td style="padding-top:8px"><input type="button" class="B" id="li-b" value="Sign In >>"></td></tr>
+      <tr><td></td><td><div id="li-e" style="color:#f00;font-size:10px;min-height:14px"></div></td></tr></table>
+    </div>
+  </div>
+  <!-- Register -->
+  <div id="f-re" class="R" style="display:none">
+    <div class="T">Create Account</div>
+    <div style="padding:20px;background:#ece9d8">
+      <table cellspacing="4"><tr><td align="right">Username:</td><td><input class="I" id="re-u" style="width:200px" maxlength="24"></td></tr>
+      <tr><td align="right">Display Name:</td><td><input class="I" id="re-d" style="width:200px" maxlength="24"></td></tr>
+      <tr><td align="right">Password:</td><td><input type="password" class="I" id="re-p" style="width:200px" maxlength="64"></td></tr>
+      <tr><td></td><td style="padding-top:8px"><input type="button" class="B" id="re-b" value="Create Account >>"></td></tr>
+      <tr><td></td><td><div id="re-e" style="color:#f00;font-size:10px;min-height:14px"></div></td></tr>
+      <tr><td></td><td style="font-size:9px;color:gray">letters, numbers, underscores for username</td></tr></table>
+    </div>
+  </div>
+</td></tr>
+<tr><td align="center" style="padding-top:8px"><span style="font-size:9px;color:#c0c0c0">v3.0</span></td></tr>
+</table>
+</td></tr></table>
 </div>
 
-<!-- ============================================================
-     MAIN CHAT SCREEN
-     ============================================================ -->
-<div id="chat-screen" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;">
-  <table width="100%" height="100%" cellpadding="0" cellspacing="0" border="0">
-    <tr>
-      <td colspan="2" class="navbar">
-        <b style="color: #0a246a; margin-right: 12px;">JorgeChat</b>
-        <a href="https://jorgepompacarrera.com">.com</a>
-        <a href="https://jorgepompacarrera.net" class="current">.net</a>
-        <a href="https://jorgepompacarrera.org">.org</a>
-        <a href="https://jorgepompacarrera.info">.info</a>
-        <span style="float: right; font-size: 10px; color: #444;">
-          <span id="status-icon" style="color: #00cc00;">&#9679;</span>
-          <span id="connection-label">Connected</span>
-          &nbsp;|&nbsp;
-          <b id="my-display"></b>
-          &nbsp;
-          <input type="button" class="btn" value="Logout" onclick="doLogout()" style="font-size: 9px; padding: 0 6px;">
-        </span>
-      </td>
-    </tr>
-    <tr>
-      <td width="170" valign="top" class="panel-raised" style="padding: 0;">
-        <table width="100%" cellpadding="0" cellspacing="0" border="0">
-          <tr><td class="titlebar-inactive">Channels</td></tr>
-          <tr><td class="panel-sunken" style="padding: 2px;">
-            <div class="sidebar-item sidebar-item-active" id="ch-public" onclick="switchChannel('public')"># public</div>
-          </td></tr>
-          <tr><td class="titlebar-inactive">Rooms</td></tr>
-          <tr><td class="panel-sunken" style="padding: 2px;">
-            <div id="rooms-list"></div>
-            <div class="sidebar-item" onclick="showCreateRoom()" style="color: #0a246a;">[+] Create Room</div>
-          </td></tr>
-          <tr><td class="titlebar-inactive">Online (<span id="online-count">0</span>)</td></tr>
-          <tr><td class="panel-sunken" style="padding: 2px;">
-            <div id="user-list" class="scroll-area" style="max-height: 400px;"></div>
-          </td></tr>
-        </table>
-      </td>
-      <td valign="top" style="padding: 0; height: 100%;">
-        <table width="100%" height="100%" cellpadding="0" cellspacing="0" border="0">
-          <tr><td class="panel-raised" style="padding: 3px 8px;">
-            <b id="channel-title"># public</b>
-            <span style="color: #808080; margin-left: 12px;" id="channel-info">Main chat room</span>
-          </td></tr>
-          <tr><td style="height: 100%; padding: 0;">
-            <div style="position: relative; width: 100%; height: 100%;">
-              <div id="messages" class="panel-sunken scroll-area" style="position: absolute; top: 0; bottom: 0; left: 0; right: 0; padding: 4px;"></div>
-            </div>
-          </td></tr>
-          <tr><td style="height: 16px; padding: 0 8px; background-color: #ece9d8;">
-            <span id="typing-indicator" style="font-size: 10px; color: #808080;"></span>
-          </td></tr>
-          <tr><td style="height: 1px; padding: 0;">
-            <div class="pending-bar" id="pending-file">
-              &#128206; <span id="pending-file-name"></span>
-              &nbsp;<span style="color: #ff0000; cursor: pointer; font-weight: bold;" onclick="clearPendingFile()">[x]</span>
-            </div>
-          </td></tr>
-          <tr><td class="panel-raised" style="padding: 4px;">
-            <table width="100%" cellpadding="0" cellspacing="2" border="0">
-              <tr>
-                <td><input type="text" class="text-input" id="msg-input" style="width: 100%;" placeholder="Type a message..." autocomplete="off"></td>
-                <td width="28"><label for="file-input" style="cursor: pointer; font-size: 14px;" title="Attach file">&#128206;</label><input type="file" id="file-input" style="display: none;"></td>
-                <td width="50"><input type="button" class="btn" id="send-btn" value="Send"></td>
-              </tr>
-            </table>
-          </td></tr>
-        </table>
-      </td>
-    </tr>
-    <tr>
-      <td colspan="2" class="statusbar">
-        <span id="status-bar-text">Ready</span>
-        <span style="float: right;">JorgeChat v2.0</span>
-      </td>
-    </tr>
-  </table>
+<!-- CHAT -->
+<div id="chat" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0">
+<table width="100%" height="100%" cellpadding="0" cellspacing="0" border="0">
+<!-- Nav -->
+<tr><td colspan="2" class="NV">
+  <b style="color:#0a246a;margin-right:12px">JorgeChat</b>
+  <a href="https://jorgepompacarrera.com">.com</a>
+  <a href="https://jorgepompacarrera.net" class="C">.net</a>
+  <a href="https://jorgepompacarrera.org">.org</a>
+  <a href="https://jorgepompacarrera.info">.info</a>
+  <span style="float:right;font-size:10px;color:#444">
+    <span id="st-i" style="color:#0c0">&#9679;</span>
+    <span id="st-l">Connected</span> |
+    <b id="my-dn"></b>
+    <input type="button" class="B Bs" value="Settings" onclick="openSettings()">
+    <input type="button" class="B Bs" value="Friends" onclick="openFriends()">
+    <input type="button" class="B Bs" value="Logout" onclick="doLogout()">
+  </span>
+</td></tr>
+<!-- Body -->
+<tr>
+<!-- Sidebar -->
+<td width="170" valign="top" class="R" style="padding:0">
+<table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr><td class="T2">Channels</td></tr>
+  <tr><td class="S" style="padding:2px">
+    <div class="si ac" id="ch-pub" onclick="swCh('public')"># public</div>
+  </td></tr>
+  <tr><td class="T2">Rooms</td></tr>
+  <tr><td class="S" style="padding:2px">
+    <div id="rm-list"></div>
+    <div class="si" onclick="showCR()" style="color:#0a246a">[+] Create Room</div>
+  </td></tr>
+  <tr><td class="T2">DMs</td></tr>
+  <tr><td class="S" style="padding:2px">
+    <div id="dm-list" class="sc" style="max-height:120px"></div>
+  </td></tr>
+  <tr><td class="T2">Online (<span id="ol-c">0</span>)</td></tr>
+  <tr><td class="S" style="padding:2px">
+    <div id="ul" class="sc" style="max-height:250px"></div>
+  </td></tr>
+</table>
+</td>
+<!-- Chat area -->
+<td valign="top" style="padding:0;height:100%">
+<table width="100%" height="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr><td class="R" style="padding:3px 8px">
+    <b id="ch-t"># public</b>
+    <span style="color:gray;margin-left:12px" id="ch-i">Main chat room</span>
+    <span id="ch-actions" style="float:right"></span>
+  </td></tr>
+  <tr><td style="height:100%;padding:0">
+    <div style="position:relative;width:100%;height:100%">
+      <div id="msgs" class="S sc" style="position:absolute;top:0;bottom:0;left:0;right:0;padding:4px"></div>
+    </div>
+  </td></tr>
+  <tr><td style="height:16px;padding:0 8px;background:#ece9d8">
+    <span id="typ" style="font-size:10px;color:gray"></span>
+  </td></tr>
+  <tr><td style="height:1px;padding:0">
+    <div class="pb" id="pf">&#128206; <span id="pfn"></span> <span style="color:#f00;cursor:pointer;font-weight:bold" onclick="clrPF()">[x]</span></div>
+  </td></tr>
+  <tr><td class="R" style="padding:4px">
+    <table width="100%" cellpadding="0" cellspacing="2" border="0"><tr>
+      <td><input class="I" id="mi" style="width:100%" placeholder="Type a message..." autocomplete="off"></td>
+      <td width="40"><input type="button" class="B Bs" value="Add +" onclick="document.getElementById('fi').click()" title="Attach file"><input type="file" id="fi" style="display:none"></td>
+      <td width="50"><input type="button" class="B" id="sb" value="Send"></td>
+    </tr></table>
+  </td></tr>
+</table>
+</td>
+</tr>
+<tr><td colspan="2" class="SB">
+  <span id="sbt">Ready</span>
+  <span style="float:right">JorgeChat v3.0</span>
+</td></tr>
+</table>
 </div>
 
-<!-- Create room modal -->
-<div class="modal-bg" id="modal-bg" onclick="hideCreateRoom()"></div>
-<div class="modal-window" id="create-room-modal">
-  <table cellpadding="0" cellspacing="0" border="0" width="100%" class="panel-raised">
-    <tr><td class="titlebar">Create Room</td></tr>
-    <tr><td style="padding: 16px; background-color: #ece9d8;">
-      <b>Room Name:</b><br>
-      <input type="text" class="text-input" id="room-name-input" maxlength="32" style="width: 100%;" autocomplete="off"><br><br>
-      <div align="right">
-        <input type="button" class="btn" value="Cancel" onclick="hideCreateRoom()">
-        &nbsp;
-        <input type="button" class="btn" value="Create" onclick="createRoom()">
-      </div>
-    </td></tr>
-  </table>
+<!-- Modals -->
+<div class="mo" id="m-bg" onclick="closeMod()"></div>
+
+<!-- Create Room -->
+<div class="mw" id="m-cr" style="margin-top:-80px;margin-left:-150px;width:300px">
+<table cellpadding="0" cellspacing="0" border="0" width="100%" class="R">
+  <tr><td class="T">Create Room</td></tr>
+  <tr><td style="padding:16px;background:#ece9d8">
+    <b>Name:</b><br><input class="I" id="cr-n" maxlength="32" style="width:100%"><br><br>
+    <input type="checkbox" id="cr-p"> <label for="cr-p">Private (invite only)</label><br><br>
+    <div align="right"><input type="button" class="B" value="Cancel" onclick="closeMod()"> <input type="button" class="B" value="Create" onclick="doCreateRoom()"></div>
+  </td></tr>
+</table>
+</div>
+
+<!-- Invite to Room -->
+<div class="mw" id="m-inv" style="margin-top:-60px;margin-left:-130px;width:260px">
+<table cellpadding="0" cellspacing="0" border="0" width="100%" class="R">
+  <tr><td class="T">Invite User</td></tr>
+  <tr><td style="padding:16px;background:#ece9d8">
+    <b>Username:</b><br><input class="I" id="inv-u" maxlength="24" style="width:100%"><br><br>
+    <div id="inv-e" style="color:#f00;font-size:10px;min-height:14px"></div>
+    <div align="right"><input type="button" class="B" value="Cancel" onclick="closeMod()"> <input type="button" class="B" value="Invite" onclick="doInvite()"></div>
+  </td></tr>
+</table>
+</div>
+
+<!-- Settings -->
+<div class="mw" id="m-set" style="margin-top:-200px;margin-left:-200px;width:400px">
+<table cellpadding="0" cellspacing="0" border="0" width="100%" class="R">
+  <tr><td class="T">Settings</td></tr>
+  <tr><td style="padding:16px;background:#ece9d8">
+    <div style="margin-bottom:8px">
+      <div class="stab on" onclick="swST(this,'set-dn')">Display Name</div>
+      <div class="stab" onclick="swST(this,'set-color')">Color</div>
+      <div class="stab" onclick="swST(this,'set-prof')">Profile</div>
+      <div class="stab" onclick="swST(this,'set-tag')">Status</div>
+    </div>
+    <div id="set-dn">
+      <b>Display Name:</b><br><input class="I" id="s-dn" maxlength="24" style="width:250px"> <input type="button" class="B" value="Save" onclick="saveDN()"><br>
+      <div id="s-dn-e" style="color:#f00;font-size:10px;min-height:14px"></div>
+      <span style="font-size:9px;color:gray">30 minute cooldown between changes</span>
+    </div>
+    <div id="set-color" style="display:none">
+      <b>Name Color:</b><br>
+      <div id="color-grid"></div>
+      <br>Custom: <input class="I" id="s-col" maxlength="7" style="width:80px" placeholder="#FF0000"> <input type="button" class="B" value="Set" onclick="saveColor()">
+      <div id="s-col-e" style="color:#f00;font-size:10px;min-height:14px"></div>
+    </div>
+    <div id="set-prof" style="display:none">
+      <b>Profile Picture:</b><br>
+      <img id="s-pfp" class="pfp" src="" style="display:none"><br>
+      <input type="file" id="s-pfp-f" accept="image/*" style="margin:4px 0"> <input type="button" class="B" value="Upload" onclick="uploadPfp()"><br><br>
+      <b>Bio:</b><br><textarea class="I" id="s-bio" style="width:100%;height:60px" maxlength="500"></textarea><br>
+      <input type="button" class="B" value="Save Bio" onclick="saveBio()">
+      <div id="s-bio-e" style="color:green;font-size:10px;min-height:14px"></div>
+    </div>
+    <div id="set-tag" style="display:none">
+      <b>Status Tag:</b><br>
+      <select class="I" id="s-tag" style="width:150px">
+        <option value="">None</option>
+        <option value="away">Away</option>
+        <option value="busy">Busy</option>
+        <option value="dnd">Do Not Disturb</option>
+        <option value="unavailable">Unavailable</option>
+      </select> <input type="button" class="B" value="Set" onclick="saveTag()">
+    </div>
+    <br><div align="right"><input type="button" class="B" value="Close" onclick="closeMod()"></div>
+  </td></tr>
+</table>
+</div>
+
+<!-- Friends -->
+<div class="mw" id="m-fr" style="margin-top:-180px;margin-left:-180px;width:360px">
+<table cellpadding="0" cellspacing="0" border="0" width="100%" class="R">
+  <tr><td class="T">Friends</td></tr>
+  <tr><td style="padding:16px;background:#ece9d8">
+    <b>Add Friend (username):</b><br>
+    <input class="I" id="fr-u" maxlength="24" style="width:200px"> <input type="button" class="B" value="Send Request" onclick="sendFR()">
+    <div id="fr-e" style="font-size:10px;min-height:14px"></div>
+    <hr style="border:1px groove #d4d0c8">
+    <b>Pending Requests:</b>
+    <div id="fr-req" class="sc" style="max-height:100px;margin:4px 0"></div>
+    <hr style="border:1px groove #d4d0c8">
+    <b>Friends:</b>
+    <div id="fr-list" class="sc" style="max-height:150px;margin:4px 0"></div>
+    <br><div align="right"><input type="button" class="B" value="Close" onclick="closeMod()"></div>
+  </td></tr>
+</table>
+</div>
+
+<!-- Profile View -->
+<div class="mw" id="m-prof" style="margin-top:-150px;margin-left:-160px;width:320px">
+<table cellpadding="0" cellspacing="0" border="0" width="100%" class="R">
+  <tr><td class="T" id="prof-title">Profile</td></tr>
+  <tr><td style="padding:16px;background:#ece9d8">
+    <table cellspacing="8"><tr>
+      <td valign="top"><img id="prof-pfp" class="pfp" src=""></td>
+      <td valign="top">
+        <b id="prof-dn" style="font-size:14px"></b><span id="prof-tags"></span><br>
+        <span style="color:gray" id="prof-un"></span><br><br>
+        <div id="prof-bio" style="font-size:11px;max-width:180px;word-wrap:break-word"></div>
+      </td>
+    </tr></table>
+    <div style="font-size:9px;color:gray" id="prof-joined"></div>
+    <br><div align="right"><input type="button" class="B" value="Close" onclick="closeMod()"></div>
+  </td></tr>
+</table>
 </div>
 
 <!-- Lightbox -->
-<div class="lightbox-bg" id="lightbox-bg" onclick="closeLightbox()"></div>
-<div class="lightbox-content" id="lightbox-content" onclick="closeLightbox()">
-  <img id="lightbox-img" src=""><br>
-  <span style="color: #ffffff; font-size: 10px;">[click to close]</span>
-</div>
+<div class="lb" id="lbg" onclick="closeLB()"></div>
+<div class="lc" id="lbc" onclick="closeLB()"><img id="lbi" src=""><br><span style="color:#fff;font-size:10px">[click to close]</span></div>
 
 <script>
-  // ============================================================
-  // STATE
-  // ============================================================
-  var socket = null;
-  var myUsername = '';
-  var myDisplayName = '';
-  var myColor = '';
-  var myToken = '';
-  var currentChannel = 'public';
-  var currentChannelType = 'public';
-  var pendingFileData = null;
-  var unreadCounts = {};
-  var typingClearTimeout = null;
+var sk=null,myU='',myDN='',myCol='',myTk='',curCh='public',curTy='public',pendF=null,unread={},typTO=null;
+var $=function(id){return document.getElementById(id)};
 
-  // DOM refs
-  var authScreen = document.getElementById('auth-screen');
-  var chatScreen = document.getElementById('chat-screen');
-  var messagesDiv = document.getElementById('messages');
-  var msgInput = document.getElementById('msg-input');
-  var sendBtn = document.getElementById('send-btn');
-  var typingIndicator = document.getElementById('typing-indicator');
-  var statusIcon = document.getElementById('status-icon');
-  var connectionLabel = document.getElementById('connection-label');
-  var myDisplaySpan = document.getElementById('my-display');
-  var channelTitle = document.getElementById('channel-title');
-  var channelInfo = document.getElementById('channel-info');
-  var userListDiv = document.getElementById('user-list');
-  var roomsListDiv = document.getElementById('rooms-list');
-  var onlineCount = document.getElementById('online-count');
-  var fileInputEl = document.getElementById('file-input');
-  var pendingFileDiv = document.getElementById('pending-file');
-  var pendingFileNameEl = document.getElementById('pending-file-name');
-  var statusBarText = document.getElementById('status-bar-text');
+// Auth tab switch
+function swT(t){
+  $('f-li').style.display=t==='li'?'':'none';
+  $('f-re').style.display=t==='re'?'':'none';
+  $('t-li').className='tb'+(t==='li'?' on':'');
+  $('t-re').className='tb'+(t==='re'?' on':'');
+}
 
-  // ============================================================
-  // AUTO-LOGIN — check for saved token in localStorage
-  // ============================================================
-  window.onload = function() {
-    var savedToken = localStorage.getItem('jorgechat_token');
-    if (savedToken) {
-      // Try to authenticate with the saved token
-      fetch('/api/auth', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: savedToken })
-      })
-      .then(function(r) { return r.json(); })
-      .then(function(data) {
-        if (data.error) {
-          // Token expired or invalid — show login screen
-          localStorage.removeItem('jorgechat_token');
-          document.getElementById('login-user').focus();
-        } else {
-          // Token valid — go straight to chat
-          myUsername = data.username;
-          myDisplayName = data.displayName;
-          myColor = data.color;
-          myToken = data.token;
-          enterChat();
-        }
-      })
-      .catch(function() {
-        localStorage.removeItem('jorgechat_token');
-        document.getElementById('login-user').focus();
-      });
-    } else {
-      document.getElementById('login-user').focus();
+// Auto-login
+window.onload=function(){
+  var tk=localStorage.getItem('jc_token');
+  if(tk){
+    api('/api/auth',{token:tk},function(d){
+      if(d.error){localStorage.removeItem('jc_token');$('li-u').focus();}
+      else{myU=d.username;myDN=d.displayName;myCol=d.color;myTk=d.token;enter();}
+    });
+  } else $('li-u').focus();
+};
+
+// API helper
+function api(url,body,cb){
+  fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
+  .then(function(r){return r.json()}).then(cb).catch(function(){cb({error:'Connection error'})});
+}
+function apiGet(url,cb){
+  fetch(url).then(function(r){return r.json()}).then(cb).catch(function(){cb({error:'Connection error'})});
+}
+
+// Login
+$('li-b').onclick=function(){
+  var u=$('li-u').value,p=$('li-p').value;
+  if(!u||!p){$('li-e').innerHTML='Fill in both fields';return;}
+  $('li-e').innerHTML='Signing in...';$('li-b').disabled=true;
+  api('/api/login',{username:u,password:p},function(d){
+    $('li-b').disabled=false;
+    if(d.error){$('li-e').innerHTML=esc(d.error);}
+    else{myU=d.username;myDN=d.displayName;myCol=d.color;myTk=d.token;localStorage.setItem('jc_token',myTk);enter();}
+  });
+};
+$('li-u').onkeydown=$('li-p').onkeydown=function(e){if(e.keyCode===13)$('li-b').onclick();};
+
+// Register
+$('re-b').onclick=function(){
+  var u=$('re-u').value,d=$('re-d').value,p=$('re-p').value;
+  if(!u||!d||!p){$('re-e').innerHTML='Fill in all fields';return;}
+  $('re-e').innerHTML='Creating...';$('re-b').disabled=true;
+  api('/api/register',{username:u,displayName:d,password:p},function(r){
+    $('re-b').disabled=false;
+    if(r.error){$('re-e').innerHTML=esc(r.error);}
+    else{myU=r.username;myDN=r.displayName;myCol=r.color;myTk=r.token;localStorage.setItem('jc_token',myTk);enter();}
+  });
+};
+$('re-u').onkeydown=$('re-d').onkeydown=$('re-p').onkeydown=function(e){if(e.keyCode===13)$('re-b').onclick();};
+
+function doLogout(){localStorage.removeItem('jc_token');if(sk)sk.disconnect();location.reload();}
+
+// Enter chat
+function enter(){
+  $('auth').style.display='none';$('chat').style.display='block';
+  $('my-dn').innerHTML=esc(myDN);
+  sk=io({transports:['websocket','polling'],upgrade:true,rememberUpgrade:true});
+  sk.on('connect',function(){sk.emit('join',{token:myTk});});
+  sk.on('joined',function(d){
+    updUL(d.onlineUsers);updRL(d.rooms);loadDMList();
+    $('mi').focus();$('sbt').innerHTML='Connected as '+esc(myDN);
+    if(d.friendRequests>0) notify('You have '+d.friendRequests+' friend request(s)');
+  });
+  sk.on('join-error',function(e){alert(e);doLogout();});
+  setupSk();
+}
+
+function setupSk(){
+  sk.on('public-message',function(m){
+    if(curCh==='public'&&curTy==='public'){rMsg(m);scr();}else incU('public');
+  });
+  sk.on('dm',function(m){
+    var other=m.from===myU?m.to:m.from;var k='dm:'+other;
+    if(curCh===k&&curTy==='dm'){rMsg(m);scr();}else{incU(k);notify('DM from '+(m.fromDisplay||m.from));}
+    loadDMList();
+  });
+  sk.on('dm-history',function(d){
+    $('msgs').innerHTML='';
+    for(var i=0;i<d.messages.length;i++)rMsg(d.messages[i]);scr();
+  });
+  sk.on('room-message',function(d){
+    var k='room:'+d.roomId;
+    if(curCh===k&&curTy==='room'){rMsg(d.message);scr();}
+    else{incU(k);if(d.message.type!=='system')notify('Room msg from '+(d.message.displayName||''));}
+  });
+  sk.on('room-joined',function(d){
+    $('msgs').innerHTML='';
+    for(var i=0;i<d.messages.length;i++)rMsg(d.messages[i]);scr();
+    // Show invite button for rooms
+    if(d.private){
+      $('ch-actions').innerHTML='<input type="button" class="B Bs" value="Invite" onclick="showInv(\''+d.id+'\')">';
+    }else{$('ch-actions').innerHTML='';}
+  });
+  sk.on('room-created',function(d){swRoom(d.id,d.name);});
+  sk.on('room-error',function(e){$('sbt').innerHTML='Error: '+esc(e);});
+  sk.on('room-invite',function(d){notify(d.from+' invited you to #'+d.roomName);});
+  sk.on('invite-sent',function(d){$('inv-e').innerHTML='<span style="color:green">Invited!</span>';});
+  sk.on('online-users',function(u){updUL(u);});
+  sk.on('rooms-list',function(r){updRL(r);});
+  sk.on('typing',function(d){showTyp(d.displayName);});
+  sk.on('notification',function(d){
+    if(d.type==='friend-request')notify(d.from+' sent a friend request');
+    if(d.type==='friend-accepted')notify(d.from+' accepted your friend request');
+  });
+  sk.on('user-updated',function(d){
+    // Refresh online list on user updates
+    // We don't have the full list so just note it
+  });
+  sk.on('disconnect',function(){$('st-i').style.color='#f00';$('st-l').innerHTML='Disconnected';$('sbt').innerHTML='Reconnecting...';});
+  sk.on('connect',function(){$('st-i').style.color='#0c0';$('st-l').innerHTML='Connected';$('sbt').innerHTML='Connected';});
+}
+
+// Render message
+function rMsg(m){
+  var d=document.createElement('div');d.style.padding='1px 0';
+  if(m.type==='system'){
+    d.style.color='gray';d.style.fontStyle='italic';d.style.fontSize='10px';
+    d.innerHTML='<span style="color:gray;font-size:10px">['+fmtT(m.timestamp)+']</span> *** '+esc(m.text)+' ***';
+  }else{
+    var dn=m.displayName||m.fromDisplay||m.username||m.from;
+    var un=m.username||m.from;
+    var col=m.color||m.fromColor||'#000';
+    var fh=m.file?rFP(m.file):'';
+    d.innerHTML='<span style="color:gray;font-size:10px">['+fmtT(m.timestamp)+']</span> '+
+      '<span style="color:'+col+';font-weight:bold;cursor:pointer" onclick="viewProf(\''+escA(un)+'\')">&lt;'+esc(dn)+'&gt;</span> '+
+      '<span style="font-size:11px">'+esc(m.text||'')+'</span>'+fh;
+  }
+  $('msgs').appendChild(d);
+}
+function rFP(f){
+  if(!f)return'';var h='<div class="fp" style="margin:2px 0 2px 20px">';
+  if(f.fileType==='image')h+='<br><img src="'+f.url+'" onclick="openLB(\''+f.url+'\')">';
+  else if(f.fileType==='video')h+='<br><video controls width="320"><source src="'+f.url+'" type="'+f.mimeType+'"></video>';
+  else if(f.fileType==='audio')h+='<br><audio controls><source src="'+f.url+'" type="'+f.mimeType+'"></audio>';
+  else h+='<br><a href="'+f.url+'" download>&#128196; '+esc(f.originalName)+' ('+fmtS(f.size)+')</a>';
+  return h+'</div>';
+}
+
+// Send
+$('sb').onclick=sendMsg;
+$('mi').onkeydown=function(e){if(e.keyCode===13){e.preventDefault();sendMsg();}};
+$('mi').oninput=function(){
+  if(!sk)return;
+  if(curTy==='public')sk.emit('typing',{room:'public'});
+  else if(curTy==='room')sk.emit('typing',{room:curCh.replace('room:','')});
+  else if(curTy==='dm')sk.emit('typing',{to:curCh.replace('dm:','')});
+};
+
+function sendMsg(){
+  var t=$('mi').value.replace(/^\s+|\s+$/g,'');
+  if(!t&&!pendF)return;
+  if(pendF){uplF(pendF,function(fd){if(!fd)return;clrPF();emitM(t,fd);});}
+  else emitM(t,null);
+  $('mi').value='';$('mi').focus();
+}
+function emitM(t,f){
+  if(curTy==='public')sk.emit('public-message',{text:t,file:f});
+  else if(curTy==='dm')sk.emit('dm',{to:curCh.replace('dm:',''),text:t,file:f});
+  else if(curTy==='room')sk.emit('room-message',{roomId:curCh.replace('room:',''),text:t,file:f});
+}
+
+// Files
+$('fi').onchange=function(){
+  var f=$('fi').files[0];if(!f)return;
+  if(f.size>50*1024*1024){alert('Max 50MB');$('fi').value='';return;}
+  pendF=f;$('pfn').innerHTML=esc(f.name)+' ('+fmtS(f.size)+')';$('pf').style.display='block';$('fi').value='';
+};
+function clrPF(){pendF=null;$('pf').style.display='none';$('pfn').innerHTML='';}
+function uplF(f,cb){
+  var fd=new FormData();fd.append('file',f);$('sbt').innerHTML='Uploading...';
+  var x=new XMLHttpRequest();
+  x.onload=function(){if(x.status===200){$('sbt').innerHTML='Done';cb(JSON.parse(x.responseText));}else{$('sbt').innerHTML='Failed';cb(null);}};
+  x.onerror=function(){$('sbt').innerHTML='Error';cb(null);};
+  x.open('POST','/upload');x.send(fd);
+}
+
+// Channel switching
+function swCh(ch){
+  curCh=ch;curTy='public';$('ch-t').innerHTML='# public';$('ch-i').innerHTML='Main chat room';
+  $('msgs').innerHTML='';clrU('public');updAct();$('mi').placeholder='Type a message...';$('ch-actions').innerHTML='';$('mi').focus();
+}
+function openDM(un){
+  if(un===myU)return;var k='dm:'+un;curCh=k;curTy='dm';
+  $('ch-t').innerHTML='DM: '+esc(un);$('ch-i').innerHTML='Private conversation';
+  $('msgs').innerHTML='';clrU(k);updAct();$('ch-actions').innerHTML='';
+  sk.emit('dm-history',un);$('mi').placeholder='Message '+un+'...';$('mi').focus();
+  $('sbt').innerHTML='DM with '+esc(un);
+}
+function swRoom(id,name){
+  var k='room:'+id;curCh=k;curTy='room';
+  $('ch-t').innerHTML='# '+esc(name);$('ch-i').innerHTML='Room';
+  $('msgs').innerHTML='';clrU(k);updAct();
+  sk.emit('join-room',id);$('mi').placeholder='Message #'+name+'...';$('mi').focus();
+}
+function updAct(){
+  var p=$('ch-pub');if(p)p.className='si'+(curTy==='public'?' ac':'');
+}
+
+// DM list in sidebar (persistent)
+function loadDMList(){
+  api('/api/dm-list',{token:myTk},function(d){
+    if(d.error||!d.conversations)return;
+    var el=$('dm-list');el.innerHTML='';
+    for(var i=0;i<d.conversations.length;i++){
+      var c=d.conversations[i];
+      if(c.username===myU)continue; // don't show self
+      var div=document.createElement('div');
+      var isAct=curCh===('dm:'+c.username);
+      div.className='si'+(isAct?' ac':'');
+      var ur=unread['dm:'+c.username]||0;
+      var badge=ur>0?' <span class="bg">'+ur+'</span>':'';
+      div.innerHTML='&#9993; '+esc(c.displayName)+badge;
+      div.onclick=(function(u){return function(){openDM(u);};})(c.username);
+      el.appendChild(div);
     }
-  };
+  });
+}
 
-  // ============================================================
-  // TAB SWITCHING (Login / Register)
-  // ============================================================
-  function switchTab(tab) {
-    if (tab === 'login') {
-      document.getElementById('form-login').style.display = '';
-      document.getElementById('form-register').style.display = 'none';
-      document.getElementById('tab-login').className = 'tab-btn active-tab';
-      document.getElementById('tab-register').className = 'tab-btn';
-      document.getElementById('login-user').focus();
-    } else {
-      document.getElementById('form-login').style.display = 'none';
-      document.getElementById('form-register').style.display = '';
-      document.getElementById('tab-login').className = 'tab-btn';
-      document.getElementById('tab-register').className = 'tab-btn active-tab';
-      document.getElementById('reg-user').focus();
-    }
+// Rooms list
+function updRL(rooms){
+  var el=$('rm-list');el.innerHTML='';
+  for(var i=0;i<rooms.length;i++){
+    var r=rooms[i];var div=document.createElement('div');
+    var isAct=curCh===('room:'+r.id);
+    div.className='si'+(isAct?' ac':'');
+    var ur=unread['room:'+r.id]||0;
+    var badge=ur>0?' <span class="bg">'+ur+'</span>':'';
+    var lock=r.private?'&#128274; ':'';
+    div.innerHTML=lock+'# '+esc(r.name)+badge;
+    div.onclick=(function(id,n){return function(){swRoom(id,n);};})(r.id,r.name);
+    el.appendChild(div);
   }
+}
 
-  // ============================================================
-  // LOGIN
-  // ============================================================
-  document.getElementById('login-btn').onclick = doLogin;
-  document.getElementById('login-user').onkeydown = function(e) { if (e.keyCode === 13) doLogin(); };
-  document.getElementById('login-pass').onkeydown = function(e) { if (e.keyCode === 13) doLogin(); };
-
-  function doLogin() {
-    var user = document.getElementById('login-user').value;
-    var pass = document.getElementById('login-pass').value;
-    var errDiv = document.getElementById('login-error');
-
-    if (!user || !pass) { errDiv.innerHTML = 'Fill in both fields'; return; }
-    errDiv.innerHTML = 'Signing in...';
-    document.getElementById('login-btn').disabled = true;
-
-    fetch('/api/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: user, password: pass })
-    })
-    .then(function(r) { return r.json(); })
-    .then(function(data) {
-      document.getElementById('login-btn').disabled = false;
-      if (data.error) {
-        errDiv.innerHTML = escapeHtml(data.error);
-      } else {
-        myUsername = data.username;
-        myDisplayName = data.displayName;
-        myColor = data.color;
-        myToken = data.token;
-        localStorage.setItem('jorgechat_token', myToken);
-        enterChat();
-      }
-    })
-    .catch(function(e) {
-      document.getElementById('login-btn').disabled = false;
-      errDiv.innerHTML = 'Connection error';
-    });
+// User list
+function updUL(users){
+  $('ol-c').innerHTML=users.length;
+  var el=$('ul');el.innerHTML='';
+  for(var i=0;i<users.length;i++){
+    var u=users[i];if(u.username===myU)continue; // don't show self
+    var div=document.createElement('div');
+    var isAct=curCh===('dm:'+u.username);
+    div.className='si'+(isAct?' ac':'');
+    var tags='';
+    if(u.tags)for(var j=0;j<u.tags.length;j++)tags+='<span class="tag tag-'+u.tags[j]+'">'+u.tags[j]+'</span>';
+    div.innerHTML='<span style="color:#0c0">&#9679;</span> <span style="color:'+u.color+'">'+esc(u.displayName)+'</span>'+tags;
+    div.onclick=(function(un){return function(){openDM(un);};})(u.username);
+    el.appendChild(div);
   }
+}
 
-  // ============================================================
-  // REGISTER
-  // ============================================================
-  document.getElementById('reg-btn').onclick = doRegister;
-  document.getElementById('reg-user').onkeydown = function(e) { if (e.keyCode === 13) doRegister(); };
-  document.getElementById('reg-display').onkeydown = function(e) { if (e.keyCode === 13) doRegister(); };
-  document.getElementById('reg-pass').onkeydown = function(e) { if (e.keyCode === 13) doRegister(); };
+// Unread
+function incU(ch){unread[ch]=(unread[ch]||0)+1;loadDMList();}
+function clrU(ch){unread[ch]=0;}
 
-  function doRegister() {
-    var user = document.getElementById('reg-user').value;
-    var display = document.getElementById('reg-display').value;
-    var pass = document.getElementById('reg-pass').value;
-    var errDiv = document.getElementById('reg-error');
+// Typing
+function showTyp(dn){
+  $('typ').innerHTML=esc(dn)+' is typing...';
+  clearTimeout(typTO);typTO=setTimeout(function(){$('typ').innerHTML='';},2000);
+}
 
-    if (!user || !display || !pass) { errDiv.innerHTML = 'Fill in all fields'; return; }
-    errDiv.innerHTML = 'Creating account...';
-    document.getElementById('reg-btn').disabled = true;
+// Notifications
+function notify(text){
+  var el=$('ntf');var d=document.createElement('div');d.className='ni';d.innerHTML=esc(text);
+  el.appendChild(d);setTimeout(function(){if(d.parentNode)d.parentNode.removeChild(d);},5000);
+  d.onclick=function(){if(d.parentNode)d.parentNode.removeChild(d);};
+}
 
-    fetch('/api/register', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: user, displayName: display, password: pass })
-    })
-    .then(function(r) { return r.json(); })
-    .then(function(data) {
-      document.getElementById('reg-btn').disabled = false;
-      if (data.error) {
-        errDiv.innerHTML = escapeHtml(data.error);
-      } else {
-        myUsername = data.username;
-        myDisplayName = data.displayName;
-        myColor = data.color;
-        myToken = data.token;
-        localStorage.setItem('jorgechat_token', myToken);
-        enterChat();
-      }
-    })
-    .catch(function(e) {
-      document.getElementById('reg-btn').disabled = false;
-      errDiv.innerHTML = 'Connection error';
-    });
-  }
+// Modals
+function closeMod(){$('m-bg').style.display='none';
+  var mods=['m-cr','m-inv','m-set','m-fr','m-prof'];
+  for(var i=0;i<mods.length;i++)$(mods[i]).style.display='none';
+}
+function showMod(id){$('m-bg').style.display='block';$(id).style.display='block';}
 
-  // ============================================================
-  // LOGOUT
-  // ============================================================
-  function doLogout() {
-    localStorage.removeItem('jorgechat_token');
-    if (socket) socket.disconnect();
-    location.reload();
-  }
+// Create room
+function showCR(){showMod('m-cr');$('cr-n').focus();}
+$('cr-n').onkeydown=function(e){if(e.keyCode===13)doCreateRoom();if(e.keyCode===27)closeMod();};
+function doCreateRoom(){
+  var n=$('cr-n').value.replace(/^\s+|\s+$/g,'');if(!n)return;
+  var priv=$('cr-p').checked;
+  sk.emit('create-room',{name:n,private:priv});closeMod();$('cr-n').value='';$('cr-p').checked=false;
+}
 
-  // ============================================================
-  // ENTER CHAT — connect socket and switch to chat view
-  // ============================================================
-  function enterChat() {
-    authScreen.style.display = 'none';
-    chatScreen.style.display = 'block';
-    myDisplaySpan.innerHTML = escapeHtml(myDisplayName);
+// Invite
+var invRoomId='';
+function showInv(rid){invRoomId=rid;$('inv-e').innerHTML='';$('inv-u').value='';showMod('m-inv');$('inv-u').focus();}
+function doInvite(){
+  var u=$('inv-u').value.replace(/^\s+|\s+$/g,'');if(!u)return;
+  sk.emit('invite-to-room',{roomId:invRoomId,username:u});
+}
+sk&&sk.on('room-error',function(e){$('inv-e').innerHTML='<span style="color:#f00">'+esc(e)+'</span>';});
 
-    socket = io({ transports: ['websocket', 'polling'], upgrade: true, rememberUpgrade: true });
-
-    socket.on('connect', function() {
-      socket.emit('join', { token: myToken });
-    });
-
-    socket.on('joined', function(data) {
-      // No history — messages array is empty. Clean slate.
-      updateUserList(data.onlineUsers);
-      updateRoomsList(data.rooms);
-      msgInput.focus();
-      statusBarText.innerHTML = 'Connected as ' + escapeHtml(myDisplayName);
-    });
-
-    socket.on('join-error', function(err) {
-      alert(err);
-      doLogout();
-    });
-
-    setupSocketListeners();
-  }
-
-  // ============================================================
-  // SOCKET LISTENERS
-  // ============================================================
-  function setupSocketListeners() {
-    socket.on('public-message', function(msg) {
-      if (currentChannel === 'public' && currentChannelType === 'public') {
-        renderMessage(msg); scrollToBottom();
-      } else { incrementUnread('public'); }
-    });
-
-    socket.on('dm', function(msg) {
-      var otherUser = msg.from === myUsername ? msg.to : msg.from;
-      var dmKey = 'dm:' + otherUser;
-      if (currentChannel === dmKey && currentChannelType === 'dm') {
-        renderMessage(msg); scrollToBottom();
-      } else { incrementUnread(dmKey); }
-    });
-
-    socket.on('dm-history', function(data) {
-      messagesDiv.innerHTML = '';
-      // Will be empty since we don't persist DM history
-      scrollToBottom();
-    });
-
-    socket.on('dm-error', function(err) { statusBarText.innerHTML = 'DM Error: ' + escapeHtml(err); });
-
-    socket.on('room-message', function(data) {
-      var roomKey = 'room:' + data.roomId;
-      if (currentChannel === roomKey && currentChannelType === 'room') {
-        renderMessage(data.message); scrollToBottom();
-      } else { incrementUnread(roomKey); }
-    });
-
-    socket.on('room-joined', function(data) {
-      messagesDiv.innerHTML = '';
-      scrollToBottom();
-    });
-
-    socket.on('room-created', function(data) { switchToRoom(data.id, data.name); });
-    socket.on('room-error', function(err) { statusBarText.innerHTML = 'Room Error: ' + escapeHtml(err); });
-    socket.on('online-users', function(users) { updateUserList(users); });
-    socket.on('rooms-list', function(roomsList) { updateRoomsList(roomsList); });
-    socket.on('typing', function(data) { showTypingIndicator(data.displayName); });
-
-    socket.on('disconnect', function() {
-      statusIcon.style.color = '#ff0000';
-      connectionLabel.innerHTML = 'Disconnected';
-      statusBarText.innerHTML = 'Connection lost. Reconnecting...';
-    });
-
-    socket.on('connect', function() {
-      statusIcon.style.color = '#00cc00';
-      connectionLabel.innerHTML = 'Connected';
-      statusBarText.innerHTML = 'Connected';
-    });
-  }
-
-  // ============================================================
-  // RENDERING
-  // ============================================================
-  function renderMessage(msg) {
-    var div = document.createElement('div');
-    div.style.padding = '1px 0';
-    if (msg.type === 'system') {
-      div.className = 'msg-system';
-      div.innerHTML = '<span class="msg-time">[' + formatTime(msg.timestamp) + ']</span> *** ' + escapeHtml(msg.text) + ' ***';
-    } else {
-      // Use displayName for chat, username for DM targeting
-      var display = msg.displayName || msg.fromDisplay || msg.username || msg.from;
-      var targetUser = msg.username || msg.from; // the actual username for DMs
-      var color = msg.color || msg.fromColor || '#000000';
-      var fileHtml = msg.file ? renderFilePreview(msg.file) : '';
-      div.innerHTML = '<span class="msg-time">[' + formatTime(msg.timestamp) + ']</span> ' +
-        '<span class="msg-user" style="color:' + color + ';" onclick="openDm(\'' + escapeAttr(targetUser) + '\')">&lt;' +
-        escapeHtml(display) + '&gt;</span> ' +
-        '<span class="msg-text">' + escapeHtml(msg.text || '') + '</span>' + fileHtml;
-    }
-    messagesDiv.appendChild(div);
-  }
-
-  function renderFilePreview(file) {
-    if (!file) return '';
-    var html = '<div class="file-preview" style="margin: 2px 0 2px 20px;">';
-    if (file.fileType === 'image') {
-      html += '<br><img src="' + file.url + '" alt="' + escapeHtml(file.originalName) + '" onclick="openLightbox(\'' + file.url + '\')">';
-    } else if (file.fileType === 'video') {
-      html += '<br><video controls width="320"><source src="' + file.url + '" type="' + file.mimeType + '"></video>';
-    } else if (file.fileType === 'audio') {
-      html += '<br><audio controls><source src="' + file.url + '" type="' + file.mimeType + '"></audio>';
-    } else {
-      html += '<br><a href="' + file.url + '" download>&#128196; ' + escapeHtml(file.originalName) + ' (' + formatFileSize(file.size) + ')</a>';
-    }
-    html += '</div>';
-    return html;
-  }
-
-  // ============================================================
-  // SENDING
-  // ============================================================
-  sendBtn.onclick = sendMessage;
-  msgInput.onkeydown = function(e) { if (e.keyCode === 13) { e.preventDefault(); sendMessage(); } };
-
-  msgInput.oninput = function() {
-    if (!socket) return;
-    if (currentChannelType === 'public') socket.emit('typing', { room: 'public' });
-    else if (currentChannelType === 'room') socket.emit('typing', { room: currentChannel.replace('room:', '') });
-    else if (currentChannelType === 'dm') socket.emit('typing', { to: currentChannel.replace('dm:', '') });
-  };
-
-  function sendMessage() {
-    var text = msgInput.value.replace(/^\s+|\s+$/g, '');
-    if (!text && !pendingFileData) return;
-    if (pendingFileData) {
-      uploadFile(pendingFileData, function(fileData) {
-        if (!fileData) return;
-        clearPendingFile();
-        emitMessage(text, fileData);
-      });
-    } else { emitMessage(text, null); }
-    msgInput.value = '';
-    msgInput.focus();
-  }
-
-  function emitMessage(text, fileData) {
-    if (currentChannelType === 'public') socket.emit('public-message', { text: text, file: fileData });
-    else if (currentChannelType === 'dm') socket.emit('dm', { to: currentChannel.replace('dm:', ''), text: text, file: fileData });
-    else if (currentChannelType === 'room') socket.emit('room-message', { roomId: currentChannel.replace('room:', ''), text: text, file: fileData });
-  }
-
-  // FILES
-  fileInputEl.onchange = function() {
-    var file = fileInputEl.files[0];
-    if (!file) return;
-    if (file.size > 50 * 1024 * 1024) { alert('File too large! Max 50MB.'); fileInputEl.value = ''; return; }
-    pendingFileData = file;
-    pendingFileNameEl.innerHTML = escapeHtml(file.name) + ' (' + formatFileSize(file.size) + ')';
-    pendingFileDiv.style.display = 'block';
-    fileInputEl.value = '';
-  };
-
-  function clearPendingFile() {
-    pendingFileData = null;
-    pendingFileDiv.style.display = 'none';
-    pendingFileNameEl.innerHTML = '';
-  }
-
-  function uploadFile(file, callback) {
-    var formData = new FormData();
-    formData.append('file', file);
-    statusBarText.innerHTML = 'Uploading ' + escapeHtml(file.name) + '...';
-    var xhr = new XMLHttpRequest();
-    xhr.onload = function() {
-      if (xhr.status === 200) { statusBarText.innerHTML = 'Upload complete.'; callback(JSON.parse(xhr.responseText)); }
-      else { statusBarText.innerHTML = 'Upload failed!'; callback(null); }
+// Settings
+function openSettings(){
+  showMod('m-set');$('s-dn').value=myDN;$('s-col').value=myCol;
+  // Load profile data
+  apiGet('/api/profile/'+myU,function(d){
+    if(d.pfp){$('s-pfp').src=d.pfp;$('s-pfp').style.display='block';}
+    else $('s-pfp').style.display='none';
+    $('s-bio').value=d.bio||'';
+    if(d.tags&&d.tags.length>0)$('s-tag').value=d.tags[0];else $('s-tag').value='';
+  });
+  buildColorGrid();
+}
+function swST(el,panelId){
+  var panels=['set-dn','set-color','set-prof','set-tag'];
+  for(var i=0;i<panels.length;i++)$(panels[i]).style.display='none';
+  $(panelId).style.display='';
+  var tabs=el.parentNode.children;
+  for(var i=0;i<tabs.length;i++)tabs[i].className='stab';
+  el.className='stab on';
+}
+function saveDN(){
+  var dn=$('s-dn').value;
+  api('/api/update-display',{token:myTk,displayName:dn},function(d){
+    if(d.error)$('s-dn-e').innerHTML='<span style="color:#f00">'+esc(d.error)+'</span>';
+    else{$('s-dn-e').innerHTML='<span style="color:green">Saved!</span>';myDN=d.displayName;$('my-dn').innerHTML=esc(myDN);}
+  });
+}
+function buildColorGrid(){
+  var colors=['#CC0000','#FF0000','#FF6600','#FF9900','#FFCC00','#FFFF00','#99CC00','#009900','#006666','#0000CC','#0000FF','#6600CC','#9900CC','#CC0066','#FF3399','#000000','#333333','#666666','#999999','#CC6633'];
+  var el=$('color-grid');el.innerHTML='';
+  for(var i=0;i<colors.length;i++){
+    var d=document.createElement('span');d.className='cpick'+(myCol===colors[i]?' sel':'');
+    d.style.backgroundColor=colors[i];d.setAttribute('data-c',colors[i]);
+    d.onclick=function(){
+      var c=this.getAttribute('data-c');$('s-col').value=c;saveColor();
     };
-    xhr.onerror = function() { statusBarText.innerHTML = 'Upload error!'; callback(null); };
-    xhr.open('POST', '/upload');
-    xhr.send(formData);
+    el.appendChild(d);
   }
+}
+function saveColor(){
+  var c=$('s-col').value;
+  api('/api/update-color',{token:myTk,color:c},function(d){
+    if(d.error)$('s-col-e').innerHTML='<span style="color:#f00">'+esc(d.error)+'</span>';
+    else{$('s-col-e').innerHTML='<span style="color:green">Saved!</span>';myCol=d.color;buildColorGrid();}
+  });
+}
+function uploadPfp(){
+  var f=$('s-pfp-f').files[0];if(!f)return;
+  var fd=new FormData();fd.append('pfp',f);fd.append('token',myTk);fd.append('username',myU);
+  fetch('/api/upload-pfp',{method:'POST',body:fd}).then(function(r){return r.json();}).then(function(d){
+    if(d.error)alert(d.error);else{$('s-pfp').src=d.pfp;$('s-pfp').style.display='block';}
+  });
+}
+function saveBio(){
+  api('/api/update-bio',{token:myTk,bio:$('s-bio').value},function(d){
+    if(d.error)$('s-bio-e').innerHTML='<span style="color:#f00">'+esc(d.error)+'</span>';
+    else $('s-bio-e').innerHTML='<span style="color:green">Saved!</span>';
+  });
+}
+function saveTag(){
+  var t=$('s-tag').value;var tags=t?[t]:[];
+  api('/api/update-tags',{token:myTk,tags:tags},function(d){});
+}
 
-  // CHANNELS
-  function switchChannel(channel) {
-    currentChannel = channel; currentChannelType = 'public';
-    channelTitle.innerHTML = '# public';
-    channelInfo.innerHTML = 'Main chat room';
-    messagesDiv.innerHTML = ''; // fresh start, no history
-    clearUnread('public');
-    updateActiveChannel();
-    msgInput.placeholder = 'Type a message...';
-    msgInput.focus();
-  }
-
-  function openDm(username) {
-    if (username === myUsername) return;
-    var dmKey = 'dm:' + username;
-    currentChannel = dmKey; currentChannelType = 'dm';
-    // Find the display name from the user list
-    var displayName = username;
-    var items = userListDiv.children;
-    // Just use username for now in the header
-    channelTitle.innerHTML = 'DM: ' + escapeHtml(username);
-    channelInfo.innerHTML = 'Private conversation';
-    messagesDiv.innerHTML = '';
-    clearUnread(dmKey);
-    updateActiveChannel();
-    socket.emit('dm-history', username);
-    msgInput.placeholder = 'Message ' + username + '...';
-    msgInput.focus();
-    statusBarText.innerHTML = 'Private chat with ' + escapeHtml(username);
-  }
-
-  function switchToRoom(roomId, roomName) {
-    var roomKey = 'room:' + roomId;
-    currentChannel = roomKey; currentChannelType = 'room';
-    channelTitle.innerHTML = '# ' + escapeHtml(roomName);
-    channelInfo.innerHTML = 'Private room';
-    messagesDiv.innerHTML = '';
-    clearUnread(roomKey);
-    updateActiveChannel();
-    socket.emit('join-room', roomId);
-    msgInput.placeholder = 'Message #' + roomName + '...';
-    msgInput.focus();
-  }
-
-  function updateActiveChannel() {
-    var pubEl = document.getElementById('ch-public');
-    if (pubEl) pubEl.className = (currentChannelType === 'public') ? 'sidebar-item sidebar-item-active' : 'sidebar-item';
-  }
-
-  // ROOMS
-  function showCreateRoom() {
-    document.getElementById('modal-bg').style.display = 'block';
-    document.getElementById('create-room-modal').style.display = 'block';
-    document.getElementById('room-name-input').focus();
-  }
-  function hideCreateRoom() {
-    document.getElementById('modal-bg').style.display = 'none';
-    document.getElementById('create-room-modal').style.display = 'none';
-    document.getElementById('room-name-input').value = '';
-  }
-  document.getElementById('room-name-input').onkeydown = function(e) {
-    if (e.keyCode === 13) createRoom();
-    if (e.keyCode === 27) hideCreateRoom();
-  };
-  function createRoom() {
-    var name = document.getElementById('room-name-input').value.replace(/^\s+|\s+$/g, '');
-    if (!name) return;
-    socket.emit('create-room', name);
-    hideCreateRoom();
-  }
-
-  function updateRoomsList(roomsList) {
-    roomsListDiv.innerHTML = '';
-    for (var i = 0; i < roomsList.length; i++) {
-      var room = roomsList[i];
-      var div = document.createElement('div');
-      var isActive = currentChannel === ('room:' + room.id);
-      div.className = isActive ? 'sidebar-item sidebar-item-active' : 'sidebar-item';
-      var unread = unreadCounts['room:' + room.id] || 0;
-      var badgeHtml = unread > 0 ? ' <span class="badge">' + unread + '</span>' : '';
-      div.innerHTML = '# ' + escapeHtml(room.name) + badgeHtml;
-      div.onclick = (function(id, name) { return function() { switchToRoom(id, name); }; })(room.id, room.name);
-      roomsListDiv.appendChild(div);
+// Friends
+function openFriends(){
+  showMod('m-fr');$('fr-e').innerHTML='';loadFriends();
+}
+function loadFriends(){
+  api('/api/friends',{token:myTk},function(d){
+    if(d.error)return;
+    // Requests
+    var rq=$('fr-req');rq.innerHTML='';
+    if(d.requests.length===0)rq.innerHTML='<span style="color:gray">None</span>';
+    for(var i=0;i<d.requests.length;i++){
+      var r=d.requests[i];var div=document.createElement('div');div.style.padding='2px 0';
+      div.innerHTML=esc(r.fromDisplay)+' ('+esc(r.from)+') <input type="button" class="B Bs" value="Accept" onclick="accFR(\''+escA(r.from)+'\')">'
+        +' <input type="button" class="B Bs" value="Reject" onclick="rejFR(\''+escA(r.from)+'\')">';
+      rq.appendChild(div);
     }
-  }
-
-  // USERS — now shows displayName with username for DM targeting
-  function updateUserList(users) {
-    onlineCount.innerHTML = users.length;
-    userListDiv.innerHTML = '';
-    for (var i = 0; i < users.length; i++) {
-      var u = users[i]; // { username, displayName }
-      var div = document.createElement('div');
-      var isActive = currentChannel === ('dm:' + u.username);
-      div.className = isActive ? 'sidebar-item sidebar-item-active' : 'sidebar-item';
-      var isSelf = u.username === myUsername;
-      var unread = unreadCounts['dm:' + u.username] || 0;
-      var badgeHtml = unread > 0 ? ' <span class="badge">' + unread + '</span>' : '';
-      var selfTag = isSelf ? ' <span style="color:#808080;">(you)</span>' : '';
-      div.innerHTML = '<span style="color:#00cc00;">&#9679;</span> ' + escapeHtml(u.displayName) + selfTag + badgeHtml;
-      if (!isSelf) div.onclick = (function(un) { return function() { openDm(un); }; })(u.username);
-      userListDiv.appendChild(div);
+    // Friends list
+    var fl=$('fr-list');fl.innerHTML='';
+    if(d.friends.length===0)fl.innerHTML='<span style="color:gray">No friends yet</span>';
+    for(var i=0;i<d.friends.length;i++){
+      var f=d.friends[i];var div=document.createElement('div');div.style.padding='2px 0';
+      var online=f.online?'<span style="color:#0c0">&#9679;</span>':'<span style="color:gray">&#9675;</span>';
+      div.innerHTML=online+' <span style="color:'+f.color+'">'+esc(f.displayName)+'</span> <span style="color:gray">('+esc(f.username)+')</span>'
+        +' <input type="button" class="B Bs" value="DM" onclick="closeMod();openDM(\''+escA(f.username)+'\')">'
+        +' <input type="button" class="B Bs" value="Remove" onclick="remFR(\''+escA(f.username)+'\')">';
+      fl.appendChild(div);
     }
-  }
+  });
+}
+function sendFR(){
+  var u=$('fr-u').value.replace(/^\s+|\s+$/g,'');if(!u)return;
+  api('/api/friend-request',{token:myTk,username:u},function(d){
+    if(d.error)$('fr-e').innerHTML='<span style="color:#f00">'+esc(d.error)+'</span>';
+    else{$('fr-e').innerHTML='<span style="color:green">Request sent!</span>';$('fr-u').value='';}
+  });
+}
+function accFR(from){api('/api/friend-accept',{token:myTk,from:from},function(){loadFriends();});}
+function rejFR(from){api('/api/friend-reject',{token:myTk,from:from},function(){loadFriends();});}
+function remFR(un){if(confirm('Remove '+un+'?'))api('/api/friend-remove',{token:myTk,username:un},function(){loadFriends();});}
 
-  // UNREAD
-  function incrementUnread(channel) { unreadCounts[channel] = (unreadCounts[channel] || 0) + 1; }
-  function clearUnread(channel) { unreadCounts[channel] = 0; }
+// Profile viewer
+function viewProf(un){
+  apiGet('/api/profile/'+un,function(d){
+    if(d.error){alert('User not found');return;}
+    $('prof-title').innerHTML='Profile — '+esc(d.displayName);
+    $('prof-dn').innerHTML=esc(d.displayName);$('prof-dn').style.color=d.color;
+    $('prof-un').innerHTML='@'+esc(d.username);
+    $('prof-bio').innerHTML=esc(d.bio||'No bio set.');
+    if(d.pfp){$('prof-pfp').src=d.pfp;$('prof-pfp').style.display='block';}
+    else{$('prof-pfp').style.display='none';}
+    var tags='';if(d.tags)for(var i=0;i<d.tags.length;i++)tags+='<span class="tag tag-'+d.tags[i]+'">'+d.tags[i]+'</span>';
+    $('prof-tags').innerHTML=tags;
+    $('prof-joined').innerHTML=d.createdAt?'Joined: '+new Date(d.createdAt).toLocaleDateString():'';
+    showMod('m-prof');
+  });
+}
 
-  // TYPING
-  function showTypingIndicator(displayName) {
-    typingIndicator.innerHTML = escapeHtml(displayName) + ' is typing...';
-    clearTimeout(typingClearTimeout);
-    typingClearTimeout = setTimeout(function() { typingIndicator.innerHTML = ''; }, 2000);
-  }
+// Lightbox
+function openLB(u){$('lbi').src=u;$('lbg').style.display='block';$('lbc').style.display='block';}
+function closeLB(){$('lbg').style.display='none';$('lbc').style.display='none';}
+document.onkeydown=function(e){if(e.keyCode===27){closeLB();closeMod();}};
 
-  // LIGHTBOX
-  function openLightbox(url) {
-    document.getElementById('lightbox-img').src = url;
-    document.getElementById('lightbox-bg').style.display = 'block';
-    document.getElementById('lightbox-content').style.display = 'block';
-  }
-  function closeLightbox() {
-    document.getElementById('lightbox-bg').style.display = 'none';
-    document.getElementById('lightbox-content').style.display = 'none';
-  }
-
-  document.onkeydown = function(e) {
-    if (e.keyCode === 27) { closeLightbox(); hideCreateRoom(); }
-  };
-
-  // UTILS
-  function formatTime(ts) {
-    var d = new Date(ts);
-    var h = d.getHours(); var m = d.getMinutes();
-    if (h < 10) h = '0' + h;
-    if (m < 10) m = '0' + m;
-    return h + ':' + m;
-  }
-  function escapeHtml(text) {
-    if (!text) return '';
-    var div = document.createElement('div');
-    div.appendChild(document.createTextNode(text));
-    return div.innerHTML;
-  }
-  function escapeAttr(text) {
-    return escapeHtml(text).replace(/'/g, '&#39;').replace(/"/g, '&quot;');
-  }
-  function formatFileSize(bytes) {
-    if (bytes < 1024) return bytes + ' B';
-    if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
-    return (bytes / 1048576).toFixed(1) + ' MB';
-  }
-  function scrollToBottom() {
-    if (messagesDiv) messagesDiv.scrollTop = messagesDiv.scrollHeight;
-  }
+// Utils
+function fmtT(ts){var d=new Date(ts);var h=d.getHours();var m=d.getMinutes();return(h<10?'0':'')+h+':'+(m<10?'0':'')+m;}
+function esc(t){if(!t)return'';var d=document.createElement('div');d.appendChild(document.createTextNode(t));return d.innerHTML;}
+function escA(t){return esc(t).replace(/'/g,'&#39;').replace(/"/g,'&quot;');}
+function fmtS(b){if(b<1024)return b+' B';if(b<1048576)return(b/1024).toFixed(1)+' KB';return(b/1048576).toFixed(1)+' MB';}
+function scr(){$('msgs').scrollTop=$('msgs').scrollHeight;}
 </script>
 </body>
 </html>
