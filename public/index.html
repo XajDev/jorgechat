@@ -270,6 +270,7 @@ body.dark .cfm-box2 .mp{background:#2a2a3e}
     <input type="button" class="B Bs" id="admin-btn" value="Admin" onclick="openAdmin()" style="display:none">
     <input type="button" class="B Bs" value="Emojis" onclick="showEmojiPicker()">
     <input type="button" class="B Bs" value="Logout" onclick="doLogout()">
+    <input type="button" class="B Bs" value="&#8645;" onclick="showAccSwitcher()" title="Switch account">
   </span>
 </td></tr>
 <tr>
@@ -482,6 +483,13 @@ body.dark .cfm-box2 .mp{background:#2a2a3e}
 
 <script>
 var sk=null,myU='',myDN='',myCol='',myTk='',curCh='public',curTy='public',pendF=null,unread={},typTO=null,curRoomId='',curRoomCreator='',myAdmin=false,myTheme='xp-blue',soundOn=true,lastDateShown='',replyToId=null,replyToDN='',afkTimer=null,noteTarget='';
+
+// Multi-account manager
+function getAccounts(){try{return JSON.parse(localStorage.getItem('jc_accounts')||'[]')}catch(e){return[]}}
+function saveAccounts(accs){localStorage.setItem('jc_accounts',JSON.stringify(accs))}
+function addAccount(username,displayName,token){var accs=getAccounts();var idx=accs.findIndex(function(a){return a.username===username});if(idx>=0){accs[idx].token=token;accs[idx].displayName=displayName}else{accs.push({username:username,displayName:displayName,token:token})}saveAccounts(accs);localStorage.setItem('jc_token',token)}
+function removeAccount(username){var accs=getAccounts().filter(function(a){return a.username!==username});saveAccounts(accs)}
+function switchAccount(token){localStorage.setItem('jc_token',token);location.reload()}
 var $=function(id){return document.getElementById(id)};
 var audioCtx=null;
 function initAudio(){if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)()}
@@ -515,14 +523,14 @@ function showDesktopNotif(title,body){if(!desktopNotifEnabled)return;try{var n=n
 function getDateStr(ts){var d=new Date(ts),today=new Date(),y=new Date(today);y.setDate(y.getDate()-1);if(d.toDateString()===today.toDateString())return'Today';if(d.toDateString()===y.toDateString())return'Yesterday';return d.toLocaleDateString()}
 function maybeShowDate(ts){var ds=getDateStr(ts);if(ds!==lastDateShown){lastDateShown=ds;var div=document.createElement('div');div.className='date-sep';div.innerHTML='— '+ds+' —';$('msgs').appendChild(div)}}
 function swT(t){$('f-li').style.display=t==='li'?'':'none';$('f-re').style.display=t==='re'?'':'none';$('t-li').className='tb'+(t==='li'?' on':'');$('t-re').className='tb'+(t==='re'?' on':'');if(t==='li')try{$('li-u').focus()}catch(e){}if(t==='re')try{$('re-u').focus()}catch(e){}}
-window.onload=function(){var tk=localStorage.getItem('jc_token');if(tk){api('/api/auth',{token:tk},function(d){if(d.error){localStorage.removeItem('jc_token');$('li-u').focus()}else{myU=d.username;myDN=d.displayName;myCol=d.color;myTk=d.token;myAdmin=d.isAdmin;myTheme=d.theme||'xp-blue';enter()}})}else $('li-u').focus()};
+window.onload=function(){var tk=localStorage.getItem('jc_token');if(tk){api('/api/auth',{token:tk},function(d){if(d.error){localStorage.removeItem('jc_token');$('li-u').focus()}else{myU=d.username;myDN=d.displayName;myCol=d.color;myTk=d.token;myAdmin=d.isAdmin;myTheme=d.theme||'xp-blue';enter()}})}else{$('li-u').focus();showSavedAccounts()}};
 function api(u,b,c){fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)}).then(function(r){return r.json()}).then(c).catch(function(){c({error:'Connection error'})})}
 function apiGet(u,c){fetch(u).then(function(r){return r.json()}).then(c).catch(function(){c({error:'err'})})}
-$('li-b').onclick=function(){var u=$('li-u').value,p=$('li-p').value;if(!u||!p){$('li-e').innerHTML='Fill in both fields';return}$('li-e').innerHTML='Signing in...';$('li-b').disabled=true;api('/api/login',{username:u,password:p},function(d){$('li-b').disabled=false;if(d.error)$('li-e').innerHTML=esc(d.error);else{myU=d.username;myDN=d.displayName;myCol=d.color;myTk=d.token;myAdmin=d.isAdmin;myTheme=d.theme||'xp-blue';localStorage.setItem('jc_token',myTk);enter()}})};
+$('li-b').onclick=function(){var u=$('li-u').value,p=$('li-p').value;if(!u||!p){$('li-e').innerHTML='Fill in both fields';return}$('li-e').innerHTML='Signing in...';$('li-b').disabled=true;api('/api/login',{username:u,password:p},function(d){$('li-b').disabled=false;if(d.error)$('li-e').innerHTML=esc(d.error);else{myU=d.username;myDN=d.displayName;myCol=d.color;myTk=d.token;myAdmin=d.isAdmin;myTheme=d.theme||'xp-blue';addAccount(d.username,d.displayName,d.token);enter()}})};
 $('li-u').onkeydown=$('li-p').onkeydown=function(e){if(e.keyCode===13)$('li-b').onclick()};
-$('re-b').onclick=function(){var u=$('re-u').value,d=$('re-d').value,p=$('re-p').value;if(!u||!d||!p){$('re-e').innerHTML='Fill in all fields';return}$('re-e').innerHTML='Creating...';$('re-b').disabled=true;api('/api/register',{username:u,displayName:d,password:p},function(r){$('re-b').disabled=false;if(r.error)$('re-e').innerHTML=esc(r.error);else{myU=r.username;myDN=r.displayName;myCol=r.color;myTk=r.token;localStorage.setItem('jc_token',myTk);enter()}})};
+$('re-b').onclick=function(){var u=$('re-u').value,d=$('re-d').value,p=$('re-p').value;if(!u||!d||!p){$('re-e').innerHTML='Fill in all fields';return}$('re-e').innerHTML='Creating...';$('re-b').disabled=true;api('/api/register',{username:u,displayName:d,password:p},function(r){$('re-b').disabled=false;if(r.error)$('re-e').innerHTML=esc(r.error);else{myU=r.username;myDN=r.displayName;myCol=r.color;myTk=r.token;addAccount(r.username,r.displayName,r.token);enter()}})};
 $('re-u').onkeydown=$('re-d').onkeydown=$('re-p').onkeydown=function(e){if(e.keyCode===13)$('re-b').onclick()};
-function doLogout(){localStorage.removeItem('jc_token');if(sk)sk.disconnect();location.reload()}
+function doLogout(){removeAccount(myU);localStorage.removeItem('jc_token');if(sk)sk.disconnect();location.reload()}
 function enter(){$('auth').style.display='none';$('chat').style.display='block';$('my-dn').innerHTML=esc(myDN);document.body.className=myTheme;if(myAdmin)$('admin-btn').style.display='';sk=io({transports:['websocket','polling'],upgrade:true,rememberUpgrade:true,secure:true});sk.on('connect',function(){sk.emit('join',{token:myTk})});sk.on('joined',function(d){updUL(d.onlineUsers);updRL(d.rooms);loadDMList();$('mi').focus();$('sbt').innerHTML='Connected as '+esc(myDN);if(d.friendRequests>0)notify(d.friendRequests+' friend request(s)');initAudio();requestDesktopNotif();loadEmojis()});sk.on('join-error',function(e){toast(e,'err');doLogout()});sk.on('force-logout',function(){doLogout()});setupSk()}
 function setupSk(){
   sk.on('public-message',function(m){if(m.type==='system'){if(m.text&&m.text.indexOf('entered')>0)playSound('join');if(m.text&&m.text.indexOf('left')>0)playSound('leave')}if(curCh==='public'&&curTy==='public'){rMsg(m);scr()}else{incU('public');if(m.type!=='system')playSound('msg')}});
@@ -709,6 +717,12 @@ function loadEmojiGrid(){apiGet('/api/emojis',function(d){customEmojis=d.emojis|
 function uploadEmoji(){var f=$('emoji-file').files[0];if(!f)return;var name=$('emoji-name').value.trim();if(!name){$('emoji-e').innerHTML='<span style="color:#f00">Need a name</span>';return}var fd=new FormData();fd.append('file',f);fd.append('token',myTk);fd.append('name',name);fetch('/api/admin/add-emoji',{method:'POST',body:fd}).then(function(r){return r.json()}).then(function(d){if(d.error)$('emoji-e').innerHTML='<span style="color:#f00">'+esc(d.error)+'</span>';else{$('emoji-e').innerHTML='<span style="color:green">Added!</span>';$('emoji-name').value='';loadEmojiGrid()}})}
 // Process custom emojis in text — replace :name: with <img>
 function processCustomEmojis(html){if(!customEmojis.length)return html;for(var i=0;i<customEmojis.length;i++){var e=customEmojis[i];var re=new RegExp(':'+e.name+':','g');html=html.replace(re,'<img src="'+e.url+'" title=":'+e.name+':" style="width:20px;height:20px;vertical-align:middle;margin:0 1px">')}return html}
+
+function showAccSwitcher(){var accs=getAccounts();if(accs.length<=1){toast('No other accounts saved','err');return}var html='<div style="position:fixed;top:30px;right:10px;z-index:400;border:2px outset #d4d0c8;background:#ece9d8;padding:6px;font-size:11px" id="acc-switcher">';html+='<b>Switch Account</b><br>';for(var i=0;i<accs.length;i++){var a=accs[i];html+='<div style="padding:3px 0;cursor:pointer'+(a.username===myU?';font-weight:bold':'')+'" onclick="switchAccount(\''+esc(a.token)+'\')">'+(a.username===myU?'&#9679; ':'&#9675; ')+esc(a.displayName)+' ('+esc(a.username)+')</div>'}html+='<div style="padding:3px 0;cursor:pointer;color:#0a246a" onclick="closeAccSwitcher();swT(\'li\')">+ Add account</div>';html+='<div style="padding:3px 0;cursor:pointer;color:gray" onclick="closeAccSwitcher()">Cancel</div></div>';document.body.insertAdjacentHTML('beforeend',html)}
+function closeAccSwitcher(){var el=$('acc-switcher');if(el)el.parentNode.removeChild(el)}
+
+// Show saved accounts on login screen
+function showSavedAccounts(){var accs=getAccounts();if(!accs.length)return;var el=$('li-e');if(!el)return;var html='<div style="margin-top:8px;border-top:1px groove #d4d0c8;padding-top:6px"><b>Saved accounts:</b>';for(var i=0;i<accs.length;i++){html+='<div style="padding:2px 0;cursor:pointer;color:#0a246a" onclick="switchAccount(\''+esc(accs[i].token)+'\')">&#8594; '+esc(accs[i].displayName)+' ('+esc(accs[i].username)+')</div>'}html+='</div>';el.innerHTML=html}
 
 function openLB(u){$('lbi').src=u;$('lbg').style.display='block';$('lbc').style.display='block'}
 function closeLB(){$('lbg').style.display='none';$('lbc').style.display='none'}
