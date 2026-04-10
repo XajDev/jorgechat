@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
+<title>Account Center — Jorge Network</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:Tahoma,Verdana,Arial,sans-serif;font-size:11px}
+body.xp-blue{background:#3a6ea5}body.xp-silver{background:#7a96a8}body.xp-olive{background:#7a8a5a}body.dark{background:#1a1a2e;color:#c0c0c0}
+.wrap{max-width:560px;margin:20px auto}
+.nv{padding:6px 12px;font-size:11px;border-bottom:2px groove #d4d0c8;background:#ece9d8}
+.nv a{color:#0a246a;text-decoration:none;padding:3px 10px;border:1px solid #ece9d8;margin-right:2px}
+.nv a:hover{border:1px outset #d4d0c8;background:#d4d0c8}
+.nv a.c{border:1px inset #d4d0c8;background:#fff;font-weight:bold}
+.nv b{color:#0a246a;margin-right:12px;font-size:13px}.nv .r{float:right}
+.R{border:2px outset #d4d0c8;background:#ece9d8}
+.T{background:#0a246a;color:#fff;font-weight:bold;padding:4px 8px;font-size:11px}
+.B{font-family:Tahoma,Verdana,sans-serif;font-size:11px;border:2px outset #d4d0c8;background:#ece9d8;padding:2px 12px;cursor:pointer;color:#000}
+.B:active{border-style:inset}.Bs{font-size:10px;padding:1px 6px}
+.I{font-family:Tahoma,Verdana,sans-serif;font-size:11px;border:2px inset #d4d0c8;padding:3px 4px;background:#fff;color:#000}
+.mp{background:#ece9d8}
+.sect{margin:8px 0}
+.sect-body{padding:12px}
+.row{margin-bottom:10px}
+.row label{display:inline-block;width:110px;font-weight:bold;vertical-align:top}
+.msg{font-size:10px;margin-top:4px;min-height:14px}
+.msg-ok{color:green}.msg-err{color:#c00}
+.pfp-img{width:80px;height:80px;border:2px inset #d4d0c8;object-fit:cover;display:block;margin-bottom:4px}
+.cpick{width:20px;height:20px;border:2px inset #d4d0c8;cursor:pointer;display:inline-block;margin:1px}
+.cpick:hover{border:2px outset #d4d0c8}.cpick.sel{border:2px solid #000}
+.badge-tag{font-size:8px;padding:0 3px;border:1px solid #999;background:#ffe;color:#333;margin-left:2px}
+.danger{border-color:#c00}.danger .T{background:#900}
+hr{border:1px groove #d4d0c8;margin:8px 0}
+/* Auth box */
+.auth-box{margin:60px auto;width:340px}
+/* Dark */
+body.dark .nv{background:#2a2a3e;border-color:#444}body.dark .nv a{color:#8080cc;border-color:#2a2a3e}body.dark .nv a:hover{background:#3a3a5e;border-color:#444}body.dark .nv a.c{background:#1a1a2e;border-color:#444;color:#aaccff}body.dark .nv b{color:#8888cc}
+body.dark .R{border-color:#444;background:#2a2a3e}body.dark .T{background:#1a1a3e;color:#c0c0e0}body.dark .B{border-color:#444;background:#2a2a3e;color:#c0c0c0}body.dark .I{border-color:#444;background:#1a1a2e;color:#c0c0c0}body.dark .mp{background:#2a2a3e}body.dark hr{border-color:#444}body.dark .badge-tag{background:#2a2a3e;border-color:#555;color:#aaa}body.dark .danger{border-color:#c00}body.dark a{color:#6688cc}body.dark select.I{background:#1a1a2e;color:#c0c0c0;border-color:#444}body.dark textarea.I{background:#1a1a2e;color:#c0c0c0;border-color:#444}
+/* Silver */
+body.xp-silver .nv{background:#e0e0e0;border-color:#b0b0b0}body.xp-silver .R{border-color:#b0b0b0;background:#e8e8e8}body.xp-silver .T{background:#5a7a8a}body.xp-silver .B{border-color:#b0b0b0;background:#e0e0e0}body.xp-silver .I{border-color:#b0b0b0}body.xp-silver .mp{background:#e8e8e8}
+/* Olive */
+body.xp-olive .nv{background:#dde0c8;border-color:#a0a890}body.xp-olive .R{border-color:#a0a890;background:#e8e8d8}body.xp-olive .T{background:#5a6a3a}body.xp-olive .B{border-color:#a0a890;background:#dde0c8}body.xp-olive .I{border-color:#a0a890}body.xp-olive .mp{background:#e8e8d8}
+body.xp-silver .toast{background:#e8e8e8;border-color:#b0b0b0}
+body.xp-olive .toast{background:#e8e8d8;border-color:#a0a890}
+
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#ece9d8;border:2px outset #d4d0c8;padding:6px 16px;font-size:11px;z-index:400;animation:toastin .3s ease}
+.toast-ok{border-left:4px solid #090}.toast-err{border-left:4px solid #c00}
+@keyframes toastin{from{opacity:0;transform:translateX(-50%) translateY(20px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+body.dark .toast{background:#2a2a3e;border-color:#444;color:#c0c0c0}
+</style>
+</head>
+<body class="xp-blue">
+<div class="nv">
+  <b>Account Center</b>
+  <a href="https://jorgepompacarrera.com">.com</a>
+  <a href="https://jorgepompacarrera.net" class="c">.net</a>
+  <a href="https://jorgepompacarrera.org">.org</a>
+  <a href="https://jorgepompacarrera.info">.info</a>
+  <span class="r" id="nav-user" style="display:none">
+    <b id="nav-dn"></b>
+    <input type="button" class="B Bs" value="Back to Chat" onclick="location.href='/'">
+    <input type="button" class="B Bs" value="Logout" onclick="doLogout()">
+  </span>
+</div>
+
+<!-- AUTH -->
+<div id="auth-view" class="auth-box" style="display:none">
+  <div class="R">
+    <div class="T">Sign In to Account Center</div>
+    <div class="mp" style="padding:16px">
+      <div class="row"><label>Username:</label><input class="I" id="li-u" style="width:180px" maxlength="24"></div>
+      <div class="row"><label>Password:</label><input type="password" class="I" id="li-p" style="width:180px"></div>
+      <div class="row"><label></label><input type="button" class="B" value="Sign In >>" onclick="doLogin()"></div>
+      <div class="msg" id="li-e"></div>
+      <div style="font-size:10px;margin-top:8px;color:gray">Your account works across JorgeChat, JorgeGram, and all Jorge sites.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ACCOUNT CENTER -->
+<div id="acc-view" class="wrap" style="display:none">
+  <div class="R sect">
+    <div class="T">&#128100; Profile</div>
+    <div class="mp sect-body">
+      <div class="row">
+        <label>Profile Picture:</label>
+        <div style="display:inline-block;vertical-align:top">
+          <img class="pfp-img" id="ac-pfp" src="">
+          <input type="file" id="ac-pfp-file" accept="image/*" style="font-size:10px;margin-top:4px">
+          <input type="button" class="B Bs" value="Upload" onclick="uploadPfp()">
+          <div class="msg" id="pfp-msg"></div>
+        </div>
+      </div>
+      <div class="row">
+        <label>Display Name:</label>
+        <input class="I" id="ac-dn" style="width:200px" maxlength="24">
+        <input type="button" class="B Bs" value="Save" onclick="saveDN()">
+        <div class="msg" id="dn-msg"></div>
+        <div style="font-size:9px;color:gray;margin-left:110px">30 min cooldown between changes</div>
+      </div>
+      <div class="row">
+        <label>Bio:</label>
+        <textarea class="I" id="ac-bio" style="width:300px;height:50px" maxlength="500"></textarea>
+        <br><label></label><input type="button" class="B Bs" value="Save Bio" onclick="saveBio()">
+        <div class="msg" id="bio-msg"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="R sect">
+    <div class="T">&#127912; Appearance</div>
+    <div class="mp sect-body">
+      <div class="row">
+        <label>Name Color:</label>
+        <div id="color-grid" style="display:inline-block;vertical-align:top"></div>
+        <br><label></label>Custom: <input class="I" id="ac-col" style="width:80px" maxlength="7" placeholder="#FF0000">
+        <input type="button" class="B Bs" value="Set" onclick="saveColor()">
+        <div class="msg" id="col-msg"></div>
+      </div>
+      <div class="row">
+        <label>Theme:</label>
+        <select class="I" id="ac-theme" style="width:180px">
+          <option value="xp-blue">Windows XP Blue</option>
+          <option value="xp-silver">Windows XP Silver</option>
+          <option value="xp-olive">Windows XP Olive</option>
+          <option value="dark">Dark Mode</option>
+        </select>
+        <input type="button" class="B Bs" value="Apply" onclick="saveTheme()">
+      </div>
+    </div>
+  </div>
+
+  <div class="R sect">
+    <div class="T">&#9881; Status</div>
+    <div class="mp sect-body">
+      <div class="row">
+        <label>Status Tag:</label>
+        <select class="I" id="ac-tag" style="width:150px">
+          <option value="">None</option>
+          <option value="away">Away</option>
+          <option value="busy">Busy</option>
+          <option value="dnd">Do Not Disturb</option>
+          <option value="unavailable">Unavailable</option>
+        </select>
+        <input type="button" class="B Bs" value="Set" onclick="saveTag()">
+      </div>
+    </div>
+  </div>
+
+  <div class="R sect">
+    <div class="T">&#128274; Security</div>
+    <div class="mp sect-body">
+      <div class="row">
+        <label>Username:</label>
+        <span id="ac-un" style="font-weight:bold"></span>
+        <span style="font-size:9px;color:gray;margin-left:8px">(cannot be changed)</span>
+      </div>
+      <div class="row">
+        <label>Joined:</label>
+        <span id="ac-joined"></span>
+      </div>
+      <div class="row">
+        <label>Badges:</label>
+        <span id="ac-badges"></span>
+      </div>
+      <hr>
+      <div class="row">
+        <label>Change Password:</label>
+        <div style="display:inline-block;vertical-align:top">
+          <input type="password" class="I" id="pw-cur" style="width:180px" placeholder="Current password"><br>
+          <input type="password" class="I" id="pw-new" style="width:180px;margin-top:4px" placeholder="New password"><br>
+          <input type="button" class="B Bs" value="Change Password" onclick="changePW()" style="margin-top:4px">
+          <div class="msg" id="pw-msg"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="R sect">
+    <div class="T">&#128279; Connected Services</div>
+    <div class="mp sect-body">
+      <div style="margin-bottom:8px">
+        <b style="color:#0a246a">JorgeChat</b> — <a href="https://jorgepompacarrera.net">jorgepompacarrera.net</a>
+        <span style="color:#0c0;font-size:10px;margin-left:6px">&#9679; Connected</span>
+      </div>
+      <div style="margin-bottom:8px">
+        <b style="color:#0a246a">JorgeGram</b> — <a href="https://jorgepompacarrera.info">jorgepompacarrera.info</a>
+        <span style="color:#0c0;font-size:10px;margin-left:6px">&#9679; Connected</span>
+      </div>
+      <div style="margin-bottom:8px">
+        <b style="color:#0a246a">JorgeGames</b> — <a href="https://jorgepompacarrera.com">jorgepompacarrera.com</a>
+        <span style="color:gray;font-size:10px;margin-left:6px">&#9675; Coming Soon</span>
+      </div>
+      <div>
+        <b style="color:#0a246a">JorgeHelp</b> — <a href="https://jorgepompacarrera.org">jorgepompacarrera.org</a>
+        <span style="color:gray;font-size:10px;margin-left:6px">&#9675; Coming Soon</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="R sect danger">
+    <div class="T">&#9888; Danger Zone</div>
+    <div class="mp sect-body">
+      <div style="margin-bottom:8px;font-size:11px">Deleting your account removes all your data from every Jorge service. This cannot be undone.</div>
+      <input type="password" class="I" id="del-pw" style="width:180px" placeholder="Enter password to confirm">
+      <input type="button" class="B Bs" value="Delete My Account" onclick="deleteAccount()" style="color:#c00">
+      <div class="msg" id="del-msg"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+var myU='',myDN='',myCol='',myTk='',myTheme='xp-blue';
+function $(id){return document.getElementById(id)}
+function api(u,b,c){fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)}).then(function(r){return r.json()}).then(c).catch(function(){c({error:'Connection error'})})}
+function toast(msg,type){var d=document.createElement('div');d.className='toast'+(type==='ok'?' toast-ok':type==='err'?' toast-err':'');d.innerHTML=msg;document.body.appendChild(d);setTimeout(function(){if(d.parentNode)d.parentNode.removeChild(d)},3000)}
+function esc(t){if(!t)return'';var d=document.createElement('div');d.appendChild(document.createTextNode(t));return d.innerHTML}
+
+// Theme
+var saved=localStorage.getItem('jorge-theme');if(saved){document.body.className=saved;myTheme=saved}
+
+// Auth
+window.onload=function(){var tk=localStorage.getItem('jc_token');if(tk){api('/api/auth',{token:tk},function(d){if(!d.error){myU=d.username;myDN=d.displayName;myCol=d.color;myTk=d.token;myTheme=d.theme||'xp-blue';document.body.className=myTheme;showAccount(d)}else{localStorage.removeItem('jc_token');showLogin()}})}else showLogin()}
+function showLogin(){$('auth-view').style.display='';$('acc-view').style.display='none';$('nav-user').style.display='none';$('li-u').focus()}
+function showAccount(d){
+  $('auth-view').style.display='none';$('acc-view').style.display='';$('nav-user').style.display='';$('nav-dn').innerHTML=esc(d.displayName);
+  $('ac-dn').value=d.displayName||'';$('ac-bio').value=d.bio||'';$('ac-col').value=d.color||'';$('ac-un').innerHTML=esc(d.username);
+  $('ac-theme').value=d.theme||'xp-blue';
+  if(d.pfp){$('ac-pfp').src=d.pfp;$('ac-pfp').style.display='block'}else $('ac-pfp').style.display='none';
+  if(d.tags&&d.tags.length>0)$('ac-tag').value=d.tags[0];
+  var badges='';if(d.badges)for(var i=0;i<d.badges.length;i++)badges+='<span class="badge-tag">'+esc(d.badges[i])+'</span>';
+  $('ac-badges').innerHTML=badges||'<span style="color:gray">None</span>';
+  $('ac-joined').innerHTML=d.createdAt?new Date(parseInt(d.createdAt)).toLocaleDateString():'Unknown';
+  buildColorGrid();
+}
+function doLogin(){var u=$('li-u').value,p=$('li-p').value;if(!u||!p){$('li-e').innerHTML='<span class="msg-err">Fill both fields</span>';return}api('/api/login',{username:u,password:p},function(d){if(d.error)$('li-e').innerHTML='<span class="msg-err">'+esc(d.error)+'</span>';else{myU=d.username;myDN=d.displayName;myCol=d.color;myTk=d.token;localStorage.setItem('jc_token',myTk);showAccount(d)}})}
+$('li-u').onkeydown=$('li-p').onkeydown=function(e){if(e.keyCode===13)doLogin()};
+function doLogout(){localStorage.removeItem('jc_token');location.reload()}
+
+// Profile
+function uploadPfp(){var f=$('ac-pfp-file').files[0];if(!f)return;var fd=new FormData();fd.append('pfp',f);fd.append('token',myTk);fd.append('username',myU);fetch('/api/upload-pfp',{method:'POST',body:fd}).then(function(r){return r.json()}).then(function(d){if(d.error)$('pfp-msg').innerHTML='<span class="msg-err">'+esc(d.error)+'</span>';else{$('ac-pfp').src=d.pfp;$('ac-pfp').style.display='block';$('pfp-msg').innerHTML='<span class="msg-ok">Updated!</span>'}})}
+function saveDN(){api('/api/update-display',{token:myTk,displayName:$('ac-dn').value},function(d){$('dn-msg').innerHTML=d.error?'<span class="msg-err">'+esc(d.error)+'</span>':'<span class="msg-ok">Saved!</span>';if(!d.error){myDN=d.displayName;$('nav-dn').innerHTML=esc(myDN)}})}
+function saveBio(){api('/api/update-bio',{token:myTk,bio:$('ac-bio').value},function(d){$('bio-msg').innerHTML=d.error?'<span class="msg-err">'+esc(d.error)+'</span>':'<span class="msg-ok">Saved!</span>'})}
+function saveTag(){var t=$('ac-tag').value;api('/api/update-tags',{token:myTk,tags:t?[t]:[]},function(d){})}
+
+// Color
+var COLORS=['#CC0000','#FF0000','#FF6600','#FF9900','#FFCC00','#FFFF00','#99CC00','#009900','#006666','#0000CC','#0000FF','#6600CC','#9900CC','#CC0066','#FF3399','#000000','#333333','#666666','#999999','#CC6633'];
+function buildColorGrid(){var el=$('color-grid');el.innerHTML='';for(var i=0;i<COLORS.length;i++){var s=document.createElement('span');s.className='cpick'+(myCol===COLORS[i]?' sel':'');s.style.backgroundColor=COLORS[i];s.setAttribute('data-c',COLORS[i]);s.onclick=function(){$('ac-col').value=this.getAttribute('data-c');saveColor()};el.appendChild(s)}}
+function saveColor(){api('/api/update-color',{token:myTk,color:$('ac-col').value},function(d){$('col-msg').innerHTML=d.error?'<span class="msg-err">'+esc(d.error)+'</span>':'<span class="msg-ok">Saved!</span>';if(!d.error){myCol=d.color;buildColorGrid()}})}
+
+// Theme
+function saveTheme(){var t=$('ac-theme').value;api('/api/update-theme',{token:myTk,theme:t},function(d){if(!d.error){myTheme=t;document.body.className=t;localStorage.setItem('jorge-theme',t)}})}
+
+// Password
+function changePW(){api('/api/update-password',{token:myTk,currentPassword:$('pw-cur').value,newPassword:$('pw-new').value},function(d){$('pw-msg').innerHTML=d.error?'<span class="msg-err">'+esc(d.error)+'</span>':'<span class="msg-ok">Password changed!</span>';if(!d.error){$('pw-cur').value='';$('pw-new').value=''}})}
+
+// Delete account
+function deleteAccount(){var pw=$('del-pw').value;if(!pw){$('del-msg').innerHTML='<span class="msg-err">Enter your password</span>';return}api('/api/delete-account',{token:myTk,password:pw},function(d){if(d.error)$('del-msg').innerHTML='<span class="msg-err">'+esc(d.error)+'</span>';else{localStorage.removeItem('jc_token');localStorage.removeItem('jg_token');toast('Account deleted.','ok');setTimeout(function(){location.href='/'},1500)}})}
+</script>
+</body>
+</html>

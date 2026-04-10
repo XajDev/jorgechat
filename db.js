@@ -129,6 +129,55 @@ async function initDB() {
   `);
 
   console.log('[DB] All tables ready');
+
+  // Add reply_to column to messages for threading
+  try { await pool.query("ALTER TABLE messages ADD COLUMN IF NOT EXISTS reply_to TEXT"); } catch(e) {}
+
+  // User notes — private notes about other users
+  await pool.query(`CREATE TABLE IF NOT EXISTS user_notes (
+    owner TEXT NOT NULL REFERENCES accounts(username),
+    target TEXT NOT NULL REFERENCES accounts(username),
+    note TEXT DEFAULT '',
+    updated_at BIGINT DEFAULT 0,
+    PRIMARY KEY (owner, target)
+  )`);
+
+  // Room settings — slow mode, topic
+  try { await pool.query("ALTER TABLE rooms ADD COLUMN IF NOT EXISTS topic TEXT DEFAULT ''"); } catch(e) {}
+  try { await pool.query("ALTER TABLE rooms ADD COLUMN IF NOT EXISTS slow_mode INT DEFAULT 0"); } catch(e) {}
+  // Track last message time per user per room for slow mode
+  await pool.query(`CREATE TABLE IF NOT EXISTS room_slow_tracker (
+    room_id TEXT NOT NULL,
+    username TEXT NOT NULL,
+    last_msg BIGINT DEFAULT 0,
+    PRIMARY KEY (room_id, username)
+  )`);
+
+  // AFK tracking
+  try { await pool.query("ALTER TABLE accounts ADD COLUMN IF NOT EXISTS afk_timeout INT DEFAULT 300"); } catch(e) {}
+
+  // Custom emojis — uploaded by admins, usable by everyone
+  await pool.query(`CREATE TABLE IF NOT EXISTS custom_emojis (
+    name TEXT PRIMARY KEY,
+    url TEXT NOT NULL,
+    uploaded_by TEXT NOT NULL,
+    created_at BIGINT DEFAULT 0
+  )`);
+
+  // Scheduled messages
+  await pool.query(`CREATE TABLE IF NOT EXISTS scheduled_messages (
+    id TEXT PRIMARY KEY,
+    username TEXT NOT NULL REFERENCES accounts(username),
+    channel_type TEXT NOT NULL,
+    channel_id TEXT NOT NULL,
+    text TEXT DEFAULT '',
+    file_data JSONB,
+    send_at BIGINT NOT NULL,
+    sent BOOLEAN DEFAULT false,
+    created_at BIGINT NOT NULL
+  )`);
+
+  console.log('[DB] All tables ready (extended)');
 }
 
 module.exports = { pool, query, queryOne, initDB };
